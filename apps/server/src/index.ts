@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { existsSync, readFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { randomUUID } from 'crypto';
 import { createContainer } from '@ai-game-arena/core';
 import { Tokens } from '@ai-game-arena/core';
 import type { Logger, EventBus } from '@ai-game-arena/sdk';
@@ -31,6 +32,29 @@ export async function createServer(config: ServerConfig) {
 
   app.use('*', cors());
   app.use('*', logger());
+
+  // C.1: Correlation ID middleware (auto-propagate correlation IDs across requests)
+  app.use('*', async (c, next) => {
+    const correlationId = c.req.header('X-Correlation-ID') ?? randomUUID();
+    c.header('X-Correlation-ID', correlationId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (c as any).set('correlationId', correlationId);
+    await next();
+  });
+
+  // C.5: Global error handler (consistent error response shape)
+  app.onError((err, c) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const correlationId = (c as any).get('correlationId') as string | undefined;
+    return c.json(
+      {
+        error: err.message,
+        code: err instanceof TypeError ? 'bad_request' : 'internal_error',
+        correlationId,
+      },
+      500,
+    );
+  });
 
   // Core services via composition root
   mkdirSync(config.dataDir, { recursive: true });
@@ -149,16 +173,48 @@ export async function createServer(config: ServerConfig) {
     });
   }
 
-  // Routes
-  app.route('/api', createApiRoutes(container));
-  app.route('/api/battles', createBattleRoutes(container));
-  app.route('/api/agents', createAgentRoutes(container));
-  app.route('/api/plugins', createPluginRoutes(container));
-  app.route('/api/arenas', createArenasRoutes(container));
-  app.route('/api/profiles', createProfilesRoutes(container));
+  // Routes (C.6: API versioned under /api/v1/)
+  app.route('/api/v1', createApiRoutes(container));
+  app.route('/api/v1/battles', createBattleRoutes(container));
+  app.route('/api/v1/agents', createAgentRoutes(container));
+  app.route('/api/v1/plugins', createPluginRoutes(container));
+  app.route('/api/v1/arenas', createArenasRoutes(container));
+  app.route('/api/v1/profiles', createProfilesRoutes(container));
 
-  app.get('/health', (c) => {
-    return c.json({ status: 'ok', timestamp: new Date().toISOString() });
+  // C.2: Deep health check (server uptime, db, plugin system)
+  app.get('/health', async (c) => {
+    const checks: Record<string, { ok: boolean; detail?: string }> = {};
+    // DB check
+    try {
+      await storage.get('__healthcheck__');
+      checks.database = { ok: true };
+    } catch (err) {
+      checks.database = { ok: false, detail: (err as Error).message };
+    }
+    // Plugin system check
+    try {
+      const plugins = pluginManager.getAllPlugins();
+      checks.plugins = { ok: true, detail: `${plugins.length} plugin(s) loaded` };
+    } catch (err) {
+      checks.plugins = { ok: false, detail: (err as Error).message };
+    }
+    // Runtime check
+    try {
+      const battles = runtime.getAllBattles();
+      checks.runtime = { ok: true, detail: `${battles.length} battle(s) tracked` };
+    } catch (err) {
+      checks.runtime = { ok: false, detail: (err as Error).message };
+    }
+    const healthy = Object.values(checks).every((c) => c.ok);
+    return c.json(
+      {
+        status: healthy ? 'ok' : 'degraded',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        checks,
+      },
+      healthy ? 200 : 503,
+    );
   });
 
   return { app, wsServer };

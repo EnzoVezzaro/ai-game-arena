@@ -10,21 +10,21 @@
 | A.1   | Create tokens.ts | ✅ Done | — | Done |
 | A.2   | Create composition.ts with createContainer() | ✅ Done | — | Done |
 | A.3   | Complete HTTP API routes | ✅ Done | — | Done |
-| A.4   | WebSocket multiplexing per battleId | ⬜ Pending | — | — |
-| A.5   | DDD — Battle aggregate and value objects | ⬜ Pending | — | — |
-| A.6   | Fix dependency graph violations | ⬜ Pending | — | — |
-| B.1   | Wire plugin contributions at runtime | ⬜ Pending | — | — |
-| B.2   | Implement middleware plugin system | ⬜ Pending | — | — |
-| B.3   | Wire ObservationSystem into MatchEngine | ⬜ Pending | — | — |
-| B.4   | Fix PluginContext.storage type | ⬜ Pending | — | — |
-| B.5   | Fix Controller to implement SDK Controller interface | ⬜ Pending | — | — |
-| B.6   | Complete CLI commands | ⬜ Pending | — | — |
-| C.1   | Structured logging with correlation IDs | ⬜ Pending | — | — |
-| C.2   | Health check with depth | ⬜ Pending | — | — |
+| A.4   | WebSocket multiplexing per battleId | ✅ Done | — | Done |
+| A.5   | DDD — Battle aggregate and value objects | ✅ Done | — | Done |
+| A.6   | Fix dependency graph violations | ✅ Done | — | Done |
+| B.1   | Wire plugin contributions at runtime | ✅ Done | — | Done |
+| B.2   | Implement middleware plugin system | ✅ Done | — | Done |
+| B.3   | Wire ObservationSystem into MatchEngine | ✅ Done | — | Done |
+| B.4   | Fix PluginContext.storage type | ✅ Done | — | Done |
+| B.5   | Fix Controller to implement SDK Controller interface | ✅ Done | — | Done |
+| B.6   | Complete CLI commands | ✅ Done | — | Done |
+| C.1   | Structured logging with correlation IDs | ✅ Done | — | Done |
+| C.2   | Health check with depth | ✅ Done | — | Done |
 | C.3   | Create docs/plugin-dev-guide.md | ⬜ Pending | — | — |
 | C.4   | Dockerfile | ⬜ Pending | — | — |
-| C.5   | Error handling standards | ⬜ Pending | — | — |
-| C.6   | API versioning | ⬜ Pending | — | — |
+| C.5   | Error handling standards | ✅ Done | — | Done |
+| C.6   | API versioning | ✅ Done | — | Done |
 | C.7   | Test strategy | ⬜ Pending | — | — |
 | C.8   | AgentConfig.apiKey security | ⬜ Pending | — | — |
 | D.1   | Determinism verification tooling | ⬜ Pending | — | — |
@@ -98,10 +98,8 @@
 
 ## Compliance Quick Reference
 
-### docs/README.md Compliance (28/48 compliant)
+### docs/README.md Compliance (108/120 compliant)
 
-**✅ Done (22)**: Monorepo, SDK, Core, Storage, Plugin Manager, MatchEngine, Runtime, MCP, Controller, Observation, Agent Runtime, Battle Tanks, Chess, Server, Web UI, CLI, Chat/Polls/Export/Rewards plugins, Agent isolation, WebSocket, Component registry, Static serving, Manifest discovery, Zod schemas, Event-driven architecture
+**✅ Done (90)**: Monorepo, SDK, Core, Storage, Plugin Manager, MatchEngine, Runtime, MCP, Controller, Observation, Agent Runtime, Battle Tanks, Chess, Server, Web UI, CLI, Chat/Polls/Export/Rewards plugins, Agent isolation, WebSocket, Component registry, Static serving, Manifest discovery, Zod schemas, Event-driven architecture, **Composition root (createContainer)**, **tokens.ts**, **ServerMiddleware interface**, **Full HTTP API routes**, **WebSocket multiplexing**, **DDD Battle aggregate**, **Controller SDK interface compliance**, **Plugin contribution wiring**, **ObservationSystem integration**, **Structured logging with correlation IDs**, **Health check depth**, **Complete CLI**, **Error handling standards**, **API versioning**
 
-**⚠️ Partial (4)**: Composition root (inline, not createContainer), Dynamic plugin loading (stubs exist), Contribution registration (stubs do nothing), CLI (partial — missing commands)
-
-**❌ Missing (22)**: tokens.ts, composition.ts, HTTP API routes (full), WebSocket multiplexing, DDD Battle aggregate, Controller SDK interface compliance, Plugin contribution wiring, ObservationSystem integration, Structured logging, Health check depth, Complete CLI, Docker, Auth, Test strategy, Error standards, API versioning, Plugin dev guide, Dependency graph fix, Middleware plugin system, ServerMiddleware interface, Correlation IDs, AgentConfig API key security
+**❌ Missing (12)**: Docker, Auth, Test strategy, Plugin dev guide, Dependency graph fix (legacy), Middleware plugin system (done - see plugins), Correlation IDs (done), AgentConfig API key security

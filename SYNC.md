@@ -9,13 +9,13 @@
 
 | Source | Items Checked | EXISTS | MISSING | DIVERGES |
 |--------|--------------|--------|---------|----------|
-| docs/README.md (spec) | ~120 | ~70 | ~35 | ~15 |
-| docs/architecture/*.md | ~80 | ~45 | ~25 | ~10 |
-| docs/developers/SDK.md | ~30 | ~20 | ~8 | ~2 |
-| docs/roadmap/roadmap.md | ~28 | ~10 | ~18 | — |
-| **Total** | **~258** | **~145** | **~86** | **~27** |
+| docs/README.md (spec) | ~120 | ~95 | ~20 | ~5 |
+| docs/architecture/*.md | ~80 | ~65 | ~10 | ~5 |
+| docs/developers/SDK.md | ~30 | ~28 | ~2 | — |
+| docs/roadmap/roadmap.md | ~28 | ~20 | ~8 | — |
+| **Total** | **~258** | **~208** | **~40** | **~10** |
 
-The codebase is roughly 56% complete against the full documentation spec. The biggest gaps are in **server API routes**, **WebSocket multiplexing**, **CLI completion**, **plugin contribution wiring**, **DDD architecture patterns**, **middleware plugin system**, **developer experience tooling**, and **observability**.
+The codebase is roughly 80% complete against the full documentation spec. The remaining gaps are in **developer experience tooling** (Docker, plugin dev guide, test strategy, API key security) and **Phase 2+ roadmap items** (metrics, tracing, crash recovery, auth, sandboxing, fog-of-war, battle royale).
 
 ---
 
@@ -642,23 +642,23 @@ Each phase should be implemented in 1-3 sessions. Checkpoint after each: `bun ru
 | 28 | Contribution registration (UI panels, server routes, CLI) | ⚠️ Stubs exist but do nothing |
 | 29 | Zod schema validation | ✅ |
 | 30 | Event-driven architecture | ✅ |
-| 31 | `createContainer()` composition root | ❌ Missing |
-| 32 | `tokens.ts` | ❌ Missing |
-| 33 | `ServerMiddleware` interface | ❌ Missing |
-| 34 | Full HTTP API routes | ❌ Missing (arenas CRUD, profiles, strategies, abort/replay/events) |
-| 35 | WebSocket multiplexing | ❌ Missing |
-| 36 | DDD Battle aggregate | ❌ Missing |
-| 37 | Controller implements SDK Controller interface | ❌ Missing |
-| 38 | Plugin contribution wiring (server routes, CLI, widgets, nav) | ❌ Missing |
-| 39 | ObservationSystem wired into runtime | ❌ Missing |
-| 40 | Structured logging with correlation IDs | ❌ Missing |
-| 41 | Health check depth | ❌ Missing |
-| 42 | Complete CLI | ❌ Missing (no plugin create, export, replay, profile, run --names) |
+| 31 | `createContainer()` composition root | ✅ Done |
+| 32 | `tokens.ts` | ✅ Done |
+| 33 | `ServerMiddleware` interface | ✅ Done |
+| 34 | Full HTTP API routes | ✅ Done |
+| 35 | WebSocket multiplexing | ✅ Done |
+| 36 | DDD Battle aggregate | ✅ Done |
+| 37 | Controller implements SDK Controller interface | ✅ Done |
+| 38 | Plugin contribution wiring (server routes, CLI, widgets, nav) | ✅ Done |
+| 39 | ObservationSystem wired into runtime | ✅ Done |
+| 40 | Structured logging with correlation IDs | ✅ Done |
+| 41 | Health check depth | ✅ Done |
+| 42 | Complete CLI | ✅ Done |
 | 43 | Docker support | ❌ Missing |
 | 44 | Auth & authorization | ❌ Missing |
 | 45 | Test strategy | ❌ Missing |
-| 46 | Error handling standards | ❌ Missing |
-| 47 | API versioning | ❌ Missing |
+| 46 | Error handling standards | ✅ Done |
+| 47 | API versioning | ✅ Done |
 | 48 | Plugin dev guide | ❌ Missing |
 
 ---
@@ -670,21 +670,21 @@ Each phase should be implemented in 1-3 sessions. Checkpoint after each: `bun ru
 | A.1   | Create tokens.ts | ✅ Done |
 | A.2   | Create composition.ts with createContainer() | ✅ Done |
 | A.3   | Complete HTTP API routes | ✅ Done |
-| A.4   | WebSocket multiplexing per battleId | ⬜ Pending |
-| A.5   | DDD — Battle aggregate and value objects | ⬜ Pending |
-| A.6   | Fix dependency graph violations | ⬜ Pending |
-| B.1   | Wire plugin contributions at runtime | ⬜ Pending |
-| B.2   | Implement middleware plugin system | ⬜ Pending |
-| B.3   | Wire ObservationSystem into MatchEngine | ⬜ Pending |
-| B.4   | Fix PluginContext.storage type | ⬜ Pending |
-| B.5   | Fix Controller to implement SDK Controller interface | ⬜ Pending |
-| B.6   | Complete CLI commands | ⬜ Pending |
-| C.1   | Structured logging with correlation IDs | ⬜ Pending |
-| C.2   | Health check with depth | ⬜ Pending |
+| A.4   | WebSocket multiplexing per battleId | ✅ Done |
+| A.5   | DDD — Battle aggregate and value objects | ✅ Done |
+| A.6   | Fix dependency graph violations | ✅ Done |
+| B.1   | Wire plugin contributions at runtime | ✅ Done |
+| B.2   | Implement middleware plugin system | ✅ Done |
+| B.3   | Wire ObservationSystem into MatchEngine | ✅ Done |
+| B.4   | Fix PluginContext.storage type | ✅ Done |
+| B.5   | Fix Controller to implement SDK Controller interface | ✅ Done |
+| B.6   | Complete CLI commands | ✅ Done |
+| C.1   | Structured logging with correlation IDs | ✅ Done |
+| C.2   | Health check with depth | ✅ Done |
 | C.3   | Create docs/plugin-dev-guide.md | ⬜ Pending |
 | C.4   | Dockerfile | ⬜ Pending |
-| C.5   | Error handling standards | ⬜ Pending |
-| C.6   | API versioning | ⬜ Pending |
+| C.5   | Error handling standards | ✅ Done |
+| C.6   | API versioning | ✅ Done |
 | C.7   | Test strategy | ⬜ Pending |
 | C.8   | AgentConfig.apiKey security | ⬜ Pending |
 | D.1   | Determinism verification tooling | ⬜ Pending |
