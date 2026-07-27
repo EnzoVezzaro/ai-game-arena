@@ -72,6 +72,18 @@ export async function createServer(config: ServerConfig) {
     await pluginManager.loadAll();
     log.info('Plugins loaded', { component: 'server' });
 
+    // Apply plugin-contributed middleware
+    const middlewares = pluginManager.getRegisteredServerMiddlewares();
+    for (const middleware of middlewares) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      app.use('*', async (c: any, next: any) => {
+        await middleware.handle(c, next);
+      });
+      log.info(`Plugin middleware applied: ${middleware.name} (from ${middleware.pluginId})`, {
+        component: 'server',
+      });
+    }
+
     // Register any plugin-contributed server routes on the Hono app
     const routes = pluginManager.getRegisteredServerRoutes();
     for (const route of routes) {

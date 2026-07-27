@@ -44,6 +44,7 @@ export interface Contributions {
   readonly dashboardWidgets?: DashboardWidget[];
   readonly navigationItems?: NavigationItem[];
   readonly contextMenus?: Record<string, ContextMenuItem[]>;
+  readonly serverMiddlewares?: string[];
   readonly arenas?: string[];
 }
 
@@ -61,9 +62,17 @@ export interface PluginContext {
   registerCliCommand(command: CliCommand): void;
   registerDashboardWidget(widget: DashboardWidget): void;
   registerNavigationItem(item: NavigationItem): void;
+  registerServerMiddleware(middleware: ServerMiddleware): void;
 
   getAvailableTools(): McpTool[];
   getAvailableArenas(): ArenaPlugin[];
+}
+
+export interface ServerMiddleware {
+  readonly name: string;
+  readonly priority?: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handle(context: any, next: () => Promise<void>): Promise<void>;
 }
 
 export interface McpTool {

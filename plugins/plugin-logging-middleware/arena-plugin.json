@@ -1,0 +1,15 @@
+{
+  "id": "plugin-logging-middleware",
+  "name": "Logging Middleware",
+  "version": "0.1.0",
+  "description": "Wires structured request logging as a server middleware",
+  "author": "AI Game Arena",
+  "category": "controller",
+  "engines": { "aga": "^0.1.0" },
+  "entry": "./dist/index.js",
+  "activation": { "startup": true },
+  "dependencies": {},
+  "contributions": {
+    "serverMiddlewares": ["logging"]
+  }
+}

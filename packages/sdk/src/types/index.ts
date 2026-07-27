@@ -92,6 +92,7 @@ export type {
   ContextMenuItem,
   PluginStorage,
   Subscription,
+  ServerMiddleware,
 } from './plugin';
 
 // Events

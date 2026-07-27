@@ -32,6 +32,14 @@ export interface RegisteredCliCommand {
   handler: unknown;
 }
 
+export interface RegisteredServerMiddleware {
+  pluginId: string;
+  name: string;
+  priority: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handle(context: any, next: () => Promise<void>): Promise<void>;
+}
+
 export class PluginManager {
   private plugins = new Map<string, PluginInstance>();
   private hooks = new Map<
@@ -44,6 +52,7 @@ export class PluginManager {
   private pluginDirs: string[];
   private serverRoutes: RegisteredServerRoute[] = [];
   private cliCommands: RegisteredCliCommand[] = [];
+  private serverMiddlewares: RegisteredServerMiddleware[] = [];
 
   constructor(options: PluginManagerOptions) {
     this.logger = options.logger;
@@ -211,6 +220,10 @@ export class PluginManager {
     return [...this.cliCommands];
   }
 
+  getRegisteredServerMiddlewares(): RegisteredServerMiddleware[] {
+    return [...this.serverMiddlewares].sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+  }
+
   async shutdown(): Promise<void> {
     // Deactivate all plugins in reverse order
     const active = this.getActivePlugins().reverse();
@@ -243,6 +256,8 @@ export class PluginManager {
     const registeredCliCommands: Array<{ name: string; description: string; handler: unknown }> = [];
     const registeredWidgets: Array<{ id: string; component: string; label: string }> = [];
     const registeredNavItems: Array<{ id: string; label: string; path: string }> = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const registeredMiddlewares: Array<{ name: string; priority?: number; handle(context: any, next: () => Promise<void>): Promise<void> }> = [];
 
     const self = this;
 
@@ -306,6 +321,15 @@ export class PluginManager {
       },
       registerNavigationItem(item) {
         registeredNavItems.push({ id: item.id, label: item.label, path: item.path });
+      },
+      registerServerMiddleware(middleware) {
+        registeredMiddlewares.push(middleware);
+        self.serverMiddlewares.push({
+          pluginId: manifest.id,
+          name: middleware.name,
+          priority: middleware.priority ?? 100,
+          handle: middleware.handle,
+        });
       },
       getAvailableTools() {
         return registeredTools;
