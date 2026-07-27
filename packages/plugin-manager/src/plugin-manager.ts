@@ -18,6 +18,20 @@ export interface PluginManagerOptions {
   storage: StorageAdapter;
 }
 
+export interface RegisteredServerRoute {
+  pluginId: string;
+  method: string;
+  path: string;
+  handler: unknown;
+}
+
+export interface RegisteredCliCommand {
+  pluginId: string;
+  name: string;
+  description: string;
+  handler: unknown;
+}
+
 export class PluginManager {
   private plugins = new Map<string, PluginInstance>();
   private hooks = new Map<
@@ -28,6 +42,8 @@ export class PluginManager {
   private eventBus: EventBus;
   private storage: StorageAdapter;
   private pluginDirs: string[];
+  private serverRoutes: RegisteredServerRoute[] = [];
+  private cliCommands: RegisteredCliCommand[] = [];
 
   constructor(options: PluginManagerOptions) {
     this.logger = options.logger;
@@ -187,6 +203,14 @@ export class PluginManager {
     return this.getAllPlugins().filter((p) => p.activatedAt !== undefined);
   }
 
+  getRegisteredServerRoutes(): RegisteredServerRoute[] {
+    return [...this.serverRoutes];
+  }
+
+  getRegisteredCliCommands(): RegisteredCliCommand[] {
+    return [...this.cliCommands];
+  }
+
   async shutdown(): Promise<void> {
     // Deactivate all plugins in reverse order
     const active = this.getActivePlugins().reverse();
@@ -214,6 +238,11 @@ export class PluginManager {
       position: string;
       type: string;
     }> = [];
+
+    const registeredRoutes: Array<{ method: string; path: string; handler: unknown }> = [];
+    const registeredCliCommands: Array<{ name: string; description: string; handler: unknown }> = [];
+    const registeredWidgets: Array<{ id: string; component: string; label: string }> = [];
+    const registeredNavItems: Array<{ id: string; label: string; path: string }> = [];
 
     const self = this;
 
@@ -254,17 +283,29 @@ export class PluginManager {
       registerUiPanel(panel) {
         registeredUiPanels.push(panel);
       },
-      registerServerRoute(_route) {
-        // Handled by server package
+      registerServerRoute(route) {
+        registeredRoutes.push({ method: String(route.method), path: route.path, handler: route.handler });
+        self.serverRoutes.push({
+          pluginId: manifest.id,
+          method: route.method,
+          path: route.path,
+          handler: route.handler,
+        });
       },
-      registerCliCommand(_command) {
-        // Handled by CLI package
+      registerCliCommand(command) {
+        registeredCliCommands.push({ name: command.name, description: command.description, handler: command.handler });
+        self.cliCommands.push({
+          pluginId: manifest.id,
+          name: command.name,
+          description: command.description,
+          handler: command.handler,
+        });
       },
-      registerDashboardWidget(_widget) {
-        // Handled by frontend
+      registerDashboardWidget(widget) {
+        registeredWidgets.push({ id: widget.id, component: widget.component, label: widget.label });
       },
-      registerNavigationItem(_item) {
-        // Handled by frontend
+      registerNavigationItem(item) {
+        registeredNavItems.push({ id: item.id, label: item.label, path: item.path });
       },
       getAvailableTools() {
         return registeredTools;

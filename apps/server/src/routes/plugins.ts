@@ -10,6 +10,8 @@ export function createPluginRoutes(container: Container) {
   // List all plugins with detailed info
   app.get('/', (c) => {
     const plugins = pluginManager.getAllPlugins();
+    const serverRoutes = pluginManager.getRegisteredServerRoutes();
+    const cliCommands = pluginManager.getRegisteredCliCommands();
     return c.json(
       plugins.map((p) => ({
         id: p.manifest.id,
@@ -20,6 +22,13 @@ export function createPluginRoutes(container: Container) {
         author: p.manifest.author,
         activation: p.manifest.activation,
         contributions: p.manifest.contributions,
+        active: p.activatedAt !== undefined,
+        serverRoutes: serverRoutes
+          .filter((r) => r.pluginId === p.manifest.id)
+          .map((r) => ({ method: r.method, path: r.path })),
+        cliCommands: cliCommands
+          .filter((cmd) => cmd.pluginId === p.manifest.id)
+          .map((cmd) => ({ name: cmd.name, description: cmd.description })),
       })),
     );
   });

@@ -71,6 +71,30 @@ export async function createServer(config: ServerConfig) {
   try {
     await pluginManager.loadAll();
     log.info('Plugins loaded', { component: 'server' });
+
+    // Register any plugin-contributed server routes on the Hono app
+    const routes = pluginManager.getRegisteredServerRoutes();
+    for (const route of routes) {
+      const handler = route.handler as (req: unknown) => Promise<unknown>;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const wrapped = async (c: any) => {
+        try {
+          const result = await handler(c.req);
+          return c.json(result);
+        } catch (err) {
+          return c.json({ error: (err as Error).message }, 500);
+        }
+      };
+      const methodName = route.method.toLowerCase();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const appAny = app as any;
+      if (typeof appAny[methodName] === 'function') {
+        appAny[methodName](route.path, wrapped);
+        log.info(`Plugin route mounted: ${route.method} ${route.path} (from ${route.pluginId})`, {
+          component: 'server',
+        });
+      }
+    }
   } catch (error) {
     log.warn('No plugins found or failed to load', { component: 'server' }, error as Error);
   }
