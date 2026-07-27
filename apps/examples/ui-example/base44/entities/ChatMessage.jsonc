@@ -1,0 +1,31 @@
+{
+  "name": "ChatMessage",
+  "type": "object",
+  "properties": {
+    "battle_id": {
+      "type": "string"
+    },
+    "author_name": {
+      "type": "string"
+    },
+    "author_role": {
+      "type": "string",
+      "enum": [
+        "spectator",
+        "agent",
+        "system"
+      ],
+      "default": "spectator"
+    },
+    "text": {
+      "type": "string"
+    },
+    "color": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "battle_id",
+    "text"
+  ]
+}

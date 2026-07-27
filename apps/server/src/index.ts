@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { mkdirSync } from 'fs';
+import { existsSync, readFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import { ConsoleLogger, InProcessEventBus, Container } from '@ai-game-arena/core';
 import { PluginManager } from '@ai-game-arena/plugin-manager';
 import { Runtime } from '@ai-game-arena/runtime';
@@ -11,6 +12,9 @@ import { createBattleRoutes } from './routes/battles';
 import { createAgentRoutes } from './routes/agents';
 import { createPluginRoutes } from './routes/plugins';
 import { BattleWebSocketServer } from './ws/battle-ws';
+
+const projectRoot = new URL('../../..', import.meta.url).pathname;
+const webDistPath = join(projectRoot, 'apps', 'web', 'dist');
 
 export interface ServerConfig {
   port: number;
@@ -66,6 +70,44 @@ export async function createServer(config: ServerConfig) {
     log.info('Plugins loaded', { component: 'server' });
   } catch (error) {
     log.warn('No plugins found or failed to load', { component: 'server' }, error as Error);
+  }
+
+  // Static file serving for web UI
+  if (existsSync(webDistPath)) {
+    app.use('*', async (c, next) => {
+      const url = new URL(c.req.url);
+      const pathname = url.pathname;
+
+      if (pathname === '/' || pathname === '') {
+        const htmlPath = join(webDistPath, 'index.html');
+        if (existsSync(htmlPath)) {
+          return c.html(readFileSync(htmlPath, 'utf-8'));
+        }
+      }
+
+      const filePath = join(webDistPath, pathname.replace(/^\//, ''));
+      if (existsSync(filePath)) {
+        const ext = pathname.split('.').pop()?.toLowerCase();
+        const contentType =
+          ext === '.js'
+            ? 'application/javascript'
+            : ext === '.css'
+              ? 'text/css'
+              : ext === '.html'
+                ? 'text/html'
+                : ext === '.json'
+                  ? 'application/json'
+                  : ext === '.svg'
+                    ? 'image/svg+xml'
+                    : 'application/octet-stream';
+        return new Response(readFileSync(filePath), {
+          headers: { 'Content-Type': contentType },
+        });
+      }
+
+      await next();
+      return c.res;
+    });
   }
 
   // Routes

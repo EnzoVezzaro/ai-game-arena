@@ -11,9 +11,7 @@ export function BattleEventLog({ battleId }: BattleEventLogProps) {
     subscribe(battleId);
   }
 
-  const battleEvents = battleId
-    ? events.filter((e) => e.type === 'event')
-    : events.filter((e) => e.type === 'event');
+  const battleEvents = events.filter((e) => e.type === 'event');
 
   return (
     <div className="flex flex-col h-full">
@@ -29,7 +27,7 @@ export function BattleEventLog({ battleId }: BattleEventLogProps) {
       <div className="flex-1 overflow-auto font-mono text-xs">
         {battleEvents.length === 0 ? (
           <div className="p-3 text-gray-500">
-            {connected ? 'Waiting for events...' : 'Connecting...'}
+            {connected ? 'Waiting for events…' : 'Connecting…'}
           </div>
         ) : (
           battleEvents.map((event, i) => (

@@ -1,0 +1,55 @@
+{
+  "name": "Package",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "game",
+        "plugin",
+        "arena",
+        "bundle"
+      ],
+      "default": "bundle"
+    },
+    "description": {
+      "type": "string"
+    },
+    "icon": {
+      "type": "string"
+    },
+    "author": {
+      "type": "string"
+    },
+    "bundle_url": {
+      "type": "string"
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "install_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "staged",
+        "installed",
+        "disabled"
+      ],
+      "default": "staged"
+    }
+  },
+  "required": [
+    "name",
+    "type"
+  ]
+}

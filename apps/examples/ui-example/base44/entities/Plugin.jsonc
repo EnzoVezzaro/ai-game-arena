@@ -1,0 +1,64 @@
+{
+  "name": "Plugin",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "arena",
+        "interaction",
+        "exporter",
+        "agent",
+        "visualization",
+        "metric"
+      ]
+    },
+    "version": {
+      "type": "string"
+    },
+    "icon": {
+      "type": "string"
+    },
+    "author": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "contributions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "bundle_url": {
+      "type": "string"
+    },
+    "entrypoint": {
+      "type": "string"
+    },
+    "install_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "staged",
+        "installed",
+        "disabled"
+      ],
+      "default": "installed"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

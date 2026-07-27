@@ -1,0 +1,69 @@
+{
+  "name": "Battle",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "arena_slug": {
+      "type": "string"
+    },
+    "game_slug": {
+      "type": "string"
+    },
+    "agent_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "waiting",
+        "running",
+        "paused",
+        "finished",
+        "aborted"
+      ],
+      "default": "waiting"
+    },
+    "turn": {
+      "type": "number",
+      "default": 0
+    },
+    "max_turns": {
+      "type": "number",
+      "default": 30
+    },
+    "scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "hp": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "winner_agent_id": {
+      "type": "string"
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "name",
+    "arena_slug",
+    "game_slug"
+  ]
+}

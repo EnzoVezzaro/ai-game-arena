@@ -1,0 +1,120 @@
+{
+  "name": "Game",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "default": "1.0.0"
+    },
+    "icon": {
+      "type": "string"
+    },
+    "adapter": {
+      "type": "string",
+      "enum": [
+        "web",
+        "canvas",
+        "dom"
+      ]
+    },
+    "format": {
+      "type": "string",
+      "enum": [
+        "html",
+        "unity_webgl",
+        "canvas",
+        "dom",
+        "embed_url",
+        "native"
+      ],
+      "default": "html"
+    },
+    "grid_size": {
+      "type": "number",
+      "default": 8
+    },
+    "min_players": {
+      "type": "number",
+      "default": 2
+    },
+    "max_players": {
+      "type": "number",
+      "default": 4
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mandatory_capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "default_strategies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "rules": {
+      "type": "string"
+    },
+    "bundle_url": {
+      "type": "string"
+    },
+    "entrypoint": {
+      "type": "string"
+    },
+    "controller_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "mandatory": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      }
+    },
+    "install_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "staged",
+        "installed",
+        "disabled"
+      ],
+      "default": "installed"
+    },
+    "author": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

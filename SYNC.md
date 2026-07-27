@@ -13,7 +13,7 @@
 | docs/architecture.md | ~150 | ~90 | ~40 | ~20 |
 | **Total** | **~250** | **~165** | **~65** | **~30** |
 
-The codebase is roughly 66% complete against the README spec. The biggest gaps are in **agent intelligence** (LLM wiring), **dynamic frontend plugin loading**, **battle viewer/replay**, and **server infrastructure** (static serving, more API routes).
+The codebase is roughly 66% complete against the README spec. The biggest gaps are in **agent intelligence** (LLM wiring), **dynamic frontend plugin loading**, **battle viewer/replay**, **server infrastructure** (static serving, more API routes), **open source contribution workflow**, and **plugin extension points documentation**.
 
 ---
 
@@ -70,6 +70,12 @@ The codebase is roughly 66% complete against the README spec. The biggest gaps a
 | P3 | Plugin permission enforcement | Partial | Permissions declared in manifests but never checked at runtime |
 | P3 | PostgreSQL storage adapter | Missing | Only SQLite exists |
 | P3 | API key storage per profile | Missing | `AgentConfig.apiKey` exists but never resolved or encrypted |
+| P3 | Middleware plugin system | Missing | No `ServerMiddleware` interface; auth/rate-limit/logging are hardcoded, not plugin-extensible |
+| P3 | Plugin development guide | Missing | No `docs/plugin-dev-guide.md` explaining extension points |
+| P3 | Test strategy | Missing | No test structure or standards in the action plan |
+| P3 | Error handling standards | Missing | No consistent error response shape for API routes |
+| P3 | Observability | Missing | No structured logging, correlation IDs, or health check depth |
+| P3 | API versioning | Missing | No `/api/v1/` prefix strategy |
 
 ---
 
@@ -102,6 +108,29 @@ The codebase is roughly 66% complete against the README spec. The biggest gaps a
 ### AgentRuntime Memory Shallow Copy
 - **Spec**: N/A (not specified)
 - **Actual**: Fixed — `getMemory()` now deep-copies all 4 arrays
+
+### Plugin Extension Points
+The following extension points are available for third-party plugins to hook into the system:
+
+| Extension Point | Plugin Method | Description |
+|----------------|---------------|-------------|
+| MCP Tools | `manifest.contributions.mcpTools` | Register tools agents can call |
+| Event Handlers | `manifest.contributions.eventHandlers` | Subscribe to domain events |
+| UI Panels | `manifest.contributions.uiPanels` | Contribute components to shell regions |
+| CLI Commands | `manifest.contributions.cliCommands` | Register `arena` CLI subcommands |
+| Server Routes | `manifest.contributions.serverRoutes` | Register REST API endpoints |
+| WebSocket Channels | `manifest.contributions.wsChannels` | Register WebSocket event channels |
+| Observation Filters | `manifest.contributions.observationFilters` | Arena-specific observation filtering |
+| Arena Renderers | `manifest.contributions.arenaRenderers` | Custom grid/board renderers for battle viewer |
+
+Every extension point is wired at plugin activation time by the PluginManager. Plugins never import core internals; they receive a scoped `PluginContext` at runtime.
+
+### Middleware as Plugin Extensions
+Server middleware (auth, rate-limiting, logging) is planned as a plugin-friendly extensibility point:
+
+- **Spec**: Middleware is a `ServerMiddleware` interface plugins can register via manifest
+- **Actual**: No middleware plugin system exists yet
+- **Fix**: Define `ServerMiddleware` in SDK, implement auth/rate-limit/plugins as middleware plugins
 
 ---
 
@@ -231,21 +260,23 @@ plugins/
 ├── plugin-polls/src/index.ts      # MCP tools only (no event handler wiring)
 ├── plugin-export/src/index.ts     # MCP tool only (no wiring)
 └── plugin-rewards/src/index.ts    # MCP tools + event handler wiring (partial)
+arenas/
 ```
 
 ### What's missing (need to create)
 ```
-packages/core/src/tokens.ts         # Move from index.ts
-packages/core/src/composition.ts    # createContainer() composition root
-apps/server/src/middleware/         # Auth, rate-limit logging
-apps/web/src/runtime/application/   # App initialization, bootstrap
-apps/web/src/runtime/router/        # Dynamic route registration from registry
-apps/web/src/runtime/navigation/    # Dynamic nav from registry
-apps/web/src/runtime/docking/       # Resize/reorder/drag docking
-apps/web/src/services/arena-loader/ # Load arena manifests → UI contributions
-apps/web/src/services/game-loader/  # Load game adapters → UI contributions
-plugins/plugin-tournament/          # Tournament system plugin
-plugins/plugin-leaderboard/         # Rankings/leaderboards plugin
+packages/core/src/tokens.ts          # Move from index.ts
+packages/core/src/composition.ts     # createContainer() composition root
+apps/server/src/middleware/           # Auth, rate-limit, logging middleware plugins
+apps/web/src/runtime/application/     # App initialization, bootstrap
+apps/web/src/runtime/router/          # Dynamic route registration from registry
+apps/web/src/runtime/navigation/      # Dynamic nav from registry
+apps/web/src/runtime/docking/         # Resize/reorder/drag docking
+apps/web/src/services/arena-loader/   # Load arena manifests → UI contributions
+apps/web/src/services/game-loader/    # Load game adapters → UI contributions
+plugins/plugin-tournament/            # Tournament system plugin
+plugins/plugin-leaderboard/           # Rankings/leaderboards plugin
+docs/plugin-dev-guide.md              # How to create and publish a plugin
 ```
 
 ---
@@ -260,6 +291,11 @@ plugins/plugin-leaderboard/         # Rankings/leaderboards plugin
 6. **Agent isolation is non-negotiable** — Agents must never see each other's thoughts/observations/actions
 7. **EventBus is the single source of truth** — All state changes become events; no direct state sharing
 8. **Plugins declare, core orchestrates** — Never hardcode plugin behavior in core
+9. **Module boundaries are enforced** — Packages only import from their own SDK types or other packages' public APIs; never internals
+10. **Tests follow hexagonal pattern** — Unit tests for services in each package, integration tests at package boundaries
+11. **Consistent error responses** — All API routes return `{ error: string, code?: string }` shape; web UI has error boundary components
+12. **Structured logging mandatory** — All log messages include `{ component, correlationId? }` for traceability across services
+13. **Open source first** — All contributions welcome per `CONTRIBUTING.md`; MIT licensed; PRs require clear description and tests
 
 ---
 
@@ -268,8 +304,172 @@ plugins/plugin-leaderboard/         # Rankings/leaderboards plugin
 The merge from spec → code follows this priority order:
 
 1. **Phase A** (P1): Agent LLM wiring + dynamic plugin loading + static serving + battle viewer — these unblock the full gameplay loop
-2. **Phase B** (P2): Server API completeness + WebSocket multiplexing + CLI completion — these complete the server contract
+2. **Phase B** (P2): Server Infrastructure (modular sub-phases):
+   - **B.1** — Complete REST API routes (arenas CRUD, profiles, strategies, battle abort/replay/events)
+   - **B.2** — WebSocket multiplexing per battleId
+   - **B.3** — CLI completion (plugin create, export, replay, profile)
+   - **B.4** — `run --names` flag and middleware plugin system
 3. **Phase C** (P3): Plugin ecosystem wiring + tournament/leaderboard + fog-of-war — these complete the platform
-4. **Phase D** (P3): DevEx improvements (tokens.ts, composition root, Docker, CI) — these improve maintainability
+4. **Phase D** (P3): DevEx improvements (tokens.ts, composition root, Docker, CI, middleware plugin system) — these improve maintainability
+5. **Phase E** (P3): Open source & contribution guide — enables external contributors and plugin ecosystem
+6. **Phase F** (P3): Quality gates (tests, error standards, observability) — ensures long-term reliability
+7. **Phase G** (P3): UI Example Integration — visual polish
 
 Each phase should be implemented in 1-3 sessions. Checkpoint after each: `bun run typecheck` + `bun run build` across all packages.
+
+---
+
+## VII. Open Source & Contribution
+
+### Project Details
+- **License**: MIT License
+- **Contributing**: See `CONTRIBUTING.md`
+- **Repository**: `ai-game-arena-refactor`
+
+### How to Contribute
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Make changes following the SYNC.md action plan
+4. Run `bun run typecheck` and `bun run build` before committing
+5. Create a PR with a clear description of what you changed and why
+6. Update SYNC.md `Progress Tracker` if your change adds or modifies tracked items
+
+### Plugin Development
+Third-party developers can extend the platform by creating plugins:
+1. Create a new directory in `plugins/`
+2. Add `arena-plugin.json` manifest with `contributions` declaring extensions
+3. Implement `activate()` and `deactivate()` exports
+4. Register MCP tools, event handlers, UI panels, CLI commands, or server routes via the manifest
+5. See existing plugins in `plugins/plugin-chat/` and `plugins/plugin-polls/` for examples
+6. See `docs/plugin-dev-guide.md` for the full plugin development guide
+
+### Architecture Extension Points
+The system is designed to be extended at every level:
+- **Server routes** — Plugins can register REST API endpoints
+- **WebSocket channels** — Plugins can subscribe to and publish events on named channels
+- **CLI commands** — Plugins can register `arena` subcommands
+- **UI regions** — Plugins can contribute components to any shell region
+- **Observation filters** — Plugins can define arena-specific observation filtering
+- **Arena renderers** — Plugins can provide custom grid/board renderers
+- **Middleware** — Plugins can register server middleware (auth, logging, rate-limit)
+
+---
+
+## VIII. Progress Tracker
+
+| Phase | Task | Status |
+|-------|------|--------|
+| A.1   | Wire AgentRuntime.decide() to LLM provider | ✅ Done |
+| A.2   | Dynamic frontend plugin loading | ✅ Done |
+| A.3   | Static file serving | ✅ Done |
+| A.4   | Battle viewer components (GridRenderer, EventLog, TurnTimeline, AgentRoster) | ✅ Done |
+| B.1   | Complete REST API routes | ⬜ Pending |
+| B.2   | WebSocket multiplexing per battleId | ⬜ Pending |
+| B.3   | CLI completion (plugin create, export, replay, profile) | ⬜ Pending |
+| B.4   | `run --names` flag and middleware plugin system | ⬜ Pending |
+| C.1   | Wire plugin contributions | ⬜ Pending |
+| C.2   | permissions/deps in manifests | ⬜ Pending |
+| C.3   | Tournament + Leaderboard plugins | ⬜ Pending |
+| C.4   | Fog-of-war filter | ⬜ Pending |
+| D.1   | tokens.ts + composition.ts | ⬜ Pending |
+| D.2   | Dependency graph fix | ⬜ Pending |
+| D.3   | Middleware plugin system | ⬜ Pending |
+| D.4   | Dockerfile + CI | ⬜ Pending |
+| E.1   | Sync CONTRIBUTING.md with SYNC.md | ⬜ Pending |
+| E.2   | License acknowledgment in SYNC.md | ⬜ Pending |
+| E.3   | Plugin publishing guide (docs/plugin-dev-guide.md) | ⬜ Pending |
+| F.1   | Test strategy | ⬜ Pending |
+| F.2   | Error handling standards | ⬜ Pending |
+| F.3   | Observability (structured logging, health depth) | ⬜ Pending |
+| VII.1 | UI Primitives + Dark Theme | ⬜ Pending |
+| A.1   | Wire AgentRuntime.decide() to LLM provider | ✅ Done |
+| A.2   | Dynamic frontend plugin loading | ✅ Done |
+| A.3   | Static file serving | ✅ Done |
+| A.4   | Battle viewer components (GridRenderer, EventLog, TurnTimeline, AgentRoster) | ✅ Done |
+| B.1   | Complete REST API routes | ⬜ Pending |
+| B.2   | WebSocket multiplexing per battleId | ⬜ Pending |
+| B.3   | CLI completion (plugin create, export, replay, profile) | ⬜ Pending |
+| B.4   | `run --names` flag and middleware plugin system | ⬜ Pending |
+| C.1   | Wire plugin contributions | ⬜ Pending |
+| C.2   | permissions/deps in manifests | ⬜ Pending |
+| C.3   | Tournament + Leaderboard plugins | ⬜ Pending |
+| C.4   | Fog-of-war filter | ⬜ Pending |
+| D.1   | tokens.ts + composition.ts | ⬜ Pending |
+| D.2   | Dependency graph fix | ⬜ Pending |
+| D.3   | Middleware plugin system | ⬜ Pending |
+| D.4   | Dockerfile + CI | ⬜ Pending |
+| E.1   | Sync CONTRIBUTING.md with SYNC.md | ⬜ Pending |
+| E.2   | License acknowledgment in SYNC.md | ⬜ Pending |
+| E.3   | Plugin publishing guide (docs/plugin-dev-guide.md) | ⬜ Pending |
+| F.1   | Test strategy | ⬜ Pending |
+| F.2   | Error handling standards | ⬜ Pending |
+| F.3   | Observability (structured logging, health depth) | ⬜ Pending |
+| VII.1 | UI Primitives + Dark Theme | ⬜ Pending |
+| A.1   | Wire AgentRuntime.decide() to LLM provider | ✅ Done |
+| A.2   | Dynamic frontend plugin loading | ✅ Done |
+| A.3   | Static file serving | ✅ Done |
+| A.4   | Battle viewer components (GridRenderer, EventLog, TurnTimeline, AgentRoster) | ✅ Done |
+| B     | Server Infrastructure (API routes, WebSocket mux, CLI) | ⬜ Pending |
+| C     | Plugin ecosystem wiring | ⬜ Pending |
+| D     | DevEx (tokens.ts, composition.ts, Docker, CI) | ⬜ Pending |
+| VII   | UI Example Integration | ⬜ Pending |
+
+Source: `apps/examples/ui-example` — Base44-generated React 18 app (NOT a dependency).
+We extract design patterns and visual quality, adapting to our React 19 + Tailwind v4 + shadcn-style shell.
+
+### What we're extracting (6 categories)
+
+| # | Category | What to take | Our target | Effort |
+|---|----------|-------------|------------|--------|
+| 1 | **UI Primitives** | shadcn-style: button, card, dialog, tabs, input, select, dropdown-menu, checkbox, switch, badge, skeleton, tooltip, toast | Replace minimal primitives in `apps/web/src/components/` | 1 session |
+| 2 | **Battle Components** | ArenaGrid (grid renderer), EventLog (stream), TurnTimeline (progress bar), AgentRoster (HP bars + scores), BattleControls, SpectatorChat | Replace stub `BattleEventLog.tsx` with real components | 2 sessions |
+| 3 | **Dark Theme Colors** | HSL palette: `--background: 224 47% 5%` (dark navy), `--primary: 189 95% 52%` (cyan), `--accent: 265 90% 66%` (purple), glass effects, scanline | Merge into `apps/web/src/styles/global.css` | 0.5 session |
+| 4 | **Animations** | Keyframes: pulse-glow, scan, fade-in, slide-up, shimmer, float, blink | Add to global CSS `@keyframes` | 0.5 session |
+| 5 | **Game Cards** | GameCard, ArenaCard, PluginCard, AgentCard, AgentAvatar, StatCard, GameBadge, LiveBadge | Modernize Dashboard + Plugins pages | 1 session |
+| 6 | **Layout Patterns** | AuthLayout (→ Shell), PageLoader (→ loading states), ScrollToTop | Adapt Shell + routing | 0.5 session |
+
+### What we're NOT taking
+- Auth system (Login/Register) — not needed yet
+- Base44 SDK (`@base44/sdk`) — incompatible with our Hono server
+- Stripe/payment — irrelevant
+- Marketing pages (Home, Packages) — not our use case
+- React 18 deps — we use React 19
+- `cmdk` command palette — we already built our own
+- `framer-motion` — use CSS animations instead (lighter)
+- `recharts` charts — not needed yet
+
+### Dependencies to add to `apps/web/package.json`
+- `@radix-ui/react-dialog`
+- `@radix-ui/react-tabs`
+- `@radix-ui/react-dropdown-menu`
+- `@radix-ui/react-slot`
+- `@radix-ui/react-checkbox`
+- `@radix-ui/react-switch`
+- `@radix-ui/react-select`
+- `@radix-ui/react-tooltip`
+- `@radix-ui/react-toast`
+- `@radix-ui/react-collapsible`
+- `@radix-ui/react-accordion`
+- `@radix-ui/react-popover`
+- `@radix-ui/react-hover-card`
+- `@radix-ui/react-context-menu`
+- `tailwindcss-animate`
+- `clsx`
+- `tailwind-merge`
+- `lucide-react`
+
+### Order of implementation
+1. UI Primitives + Dark Theme → immediate visual upgrade (1 session)
+2. Battle Components → replaces stub BattleEventLog (2 sessions)
+3. Game Cards + Dashboard → modern dashboard (1 session)
+4. Animation System → adds life to UI (0.5 session)
+5. Layout Patterns → better Shell structure (0.5 session)
+
+### Adaptation pattern for each extracted component
+1. Remove `@/lib/utils` and `@/components/Icon` imports (Base44-specific)
+2. Replace with our imports (Tailwind classes, our shell components)
+3. Remove any `db.entities.*` Base44 SDK calls (use our API hooks instead)
+4. Make component work with our data structures (WorldState, TurnResult, AgentAction)
+5. TypeScript conversion: `.jsx` → `.tsx` with proper types
+6. Place in existing `apps/web/src/components/` (not a new directory)
+7. Preserve our business logic — these are UI-only, no data fetching logic

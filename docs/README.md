@@ -37,6 +37,7 @@ Runtime
 - [Discovery System](architecture/discovery.md) — Automatic discovery, manifest-driven loading
 - [Runtime Registries](architecture/registries.md) — Registry patterns, lazy loading, hot reload
 - [Runtime Contracts](architecture/contracts.md) — Interfaces, contracts, versioning
+- [Data Layer](architecture/storage.md) — Event store, persistence, migrations
 
 ### Arenas
 - [Arena Architecture](arenas/architecture.md) — Arena as environment container
@@ -67,6 +68,7 @@ Runtime
 - [Replay System](battles/replay.md) — Recording, replay, determinism
 
 ### Frontend
+- [Design System](frontend/design-system.md) — Visual language, tokens, components, layout
 - [Frontend Shell](frontend/shell.md) — Runtime shell, routing, docking, command palette
 - [Extension System](frontend/extensions.md) — Dynamic UI contributions
 - [UI Contributions](frontend/UI-contributions.md) — Panels, panels, overlays, widgets

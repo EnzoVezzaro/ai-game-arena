@@ -7,7 +7,7 @@ import { Plugins } from './pages/Plugins';
 import { Settings } from './pages/Settings';
 import { CommandPalette } from './runtime/commands/CommandPalette';
 import { BattleEventLog } from './components/shell/BattleEventLog';
-import { useBattleWebSocket } from './hooks/useBattleWebSocket';
+import { loadPluginContributions } from './bootstrap/plugin-loader';
 import './styles/global.css';
 
 const registry = createComponentRegistry();
@@ -16,13 +16,7 @@ registry.register({
   id: 'arena:status-connection',
   region: 'status-bar',
   component: function ConnectionStatus() {
-    const { connected } = useBattleWebSocket();
-    return (
-      <span className="mr-4 flex items-center gap-1.5">
-        <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-500' : 'bg-gray-500'}`} />
-        {connected ? 'Live' : 'Offline'}
-      </span>
-    );
+    return <span className="mr-4 flex items-center gap-1.5">Ready</span>;
   },
   order: 0,
 });
@@ -49,3 +43,5 @@ export function App() {
     </BrowserRouter>
   );
 }
+
+loadPluginContributions(registry);

@@ -9,15 +9,19 @@ import type { Observation as ObservationType } from '@ai-game-arena/sdk';
 import { LocalMcpClient } from '@ai-game-arena/mcp';
 import type { McpClient, McpToolResult } from '@ai-game-arena/mcp';
 import type { Controller } from '@ai-game-arena/controller';
+import type { LLMProvider } from './providers/llm-provider';
+import { createProvider } from './providers/provider-factory';
 
 export interface AgentRuntimeOptions {
   logger: Logger;
+  provider?: LLMProvider;
 }
 
 export class AgentRuntime {
   private logger: Logger;
   private agent: AgentConfig | null = null;
   private mcpClient: McpClient | null = null;
+  private llmProvider: LLMProvider;
   private memory: AgentMemory = {
     shortTerm: [],
     longTerm: [],
@@ -25,14 +29,21 @@ export class AgentRuntime {
     strategic: [],
   };
   private lastObservation: ObservationType | null = null;
+  private decisionHistory: Array<{ role: 'user' | 'assistant' | 'tool'; content: string }> = [];
 
   constructor(options: AgentRuntimeOptions) {
     this.logger = options.logger;
+    this.llmProvider = options.provider ?? createProvider(undefined);
   }
 
   async initialize(agent: AgentConfig): Promise<void> {
     this.agent = agent;
-    this.logger.info(`Initialized agent: ${agent.name} (${agent.id})`, {
+
+    if (agent.provider) {
+      this.llmProvider = createProvider(agent.provider);
+    }
+
+    this.logger.info(`Initialized agent: ${agent.name} (${agent.id}) with provider: ${this.llmProvider.type}`, {
       component: 'agent-runtime',
       agentId: agent.id,
     });
@@ -49,7 +60,6 @@ export class AgentRuntime {
   async observe(observation: ObservationType): Promise<void> {
     this.lastObservation = observation;
 
-    // Store in short-term memory
     const memoryEntry: MemoryEntry = {
       id: `obs-${Date.now()}`,
       content: JSON.stringify(observation.data),
@@ -60,7 +70,6 @@ export class AgentRuntime {
 
     this.memory.shortTerm.push(memoryEntry);
 
-    // Keep short-term memory bounded
     if (this.memory.shortTerm.length > 100) {
       const trimmed = this.memory.shortTerm.slice(-50);
       this.memory = { ...this.memory, shortTerm: trimmed };
@@ -72,14 +81,68 @@ export class AgentRuntime {
       throw new Error('Agent not connected to controller');
     }
 
-    // List available tools
     const tools = await this.mcpClient.listTools();
-    const toolNames = tools.map((t) => t.name);
+    const observationText = this.lastObservation
+      ? JSON.stringify(this.lastObservation.data)
+      : 'No observation available';
 
-    // Simple decision logic - in real implementation, this would call an LLM
-    const action = this.createDefaultDecision(toolNames);
+    const response = await this.llmProvider.decide(
+      this.agent!,
+      observationText,
+      tools,
+      this.decisionHistory,
+    );
 
-    return action;
+    if (response.toolCalls && response.toolCalls.length > 0) {
+      const toolCall = response.toolCalls[0];
+      if (!toolCall) {
+        return {
+          agentId: this.agent?.id ?? 'unknown',
+          type: 'pass',
+          parameters: {},
+          timestamp: Date.now(),
+        };
+      }
+
+      this.decisionHistory.push({ role: 'assistant', content: JSON.stringify(response.toolCalls) });
+
+      try {
+        const result = await this.mcpClient.callTool(toolCall.name, toolCall.parameters);
+
+        this.decisionHistory.push({
+          role: 'tool',
+          content: JSON.stringify(result.content),
+        });
+
+        return {
+          agentId: this.agent?.id ?? 'unknown',
+          type: toolCall.name,
+          parameters: toolCall.parameters,
+          timestamp: Date.now(),
+        };
+      } catch (err) {
+        this.logger.error(`Tool execution failed: ${toolCall.name}`, {
+          component: 'agent-runtime',
+          agentId: this.agent?.id,
+        });
+
+        return {
+          agentId: this.agent?.id ?? 'unknown',
+          type: 'pass',
+          parameters: {},
+          timestamp: Date.now(),
+        };
+      }
+    }
+
+    this.decisionHistory.push({ role: 'assistant', content: response.content });
+
+    return {
+      agentId: this.agent?.id ?? 'unknown',
+      type: 'pass',
+      parameters: {},
+      timestamp: Date.now(),
+    };
   }
 
   async executeTool(toolName: string, args: Record<string, unknown>): Promise<McpToolResult> {
@@ -95,7 +158,6 @@ export class AgentRuntime {
       throw new Error('Agent not connected to controller');
     }
 
-    // Store in social memory
     const memoryEntry: MemoryEntry = {
       id: `msg-${Date.now()}`,
       content: message,
@@ -124,30 +186,11 @@ export class AgentRuntime {
     return this.lastObservation;
   }
 
-  private createDefaultDecision(availableTools: string[]): AgentAction {
-    const agentId = this.agent?.id ?? 'unknown';
-    // Default: pass if available, otherwise first tool
-    const passTool = availableTools.find((t) => t === 'pass');
-    if (passTool) {
-      return {
-        agentId,
-        type: 'pass',
-        parameters: {},
-        timestamp: Date.now(),
-      };
-    }
-
-    return {
-      agentId,
-      type: availableTools[0] ?? 'pass',
-      parameters: {},
-      timestamp: Date.now(),
-    };
-  }
-
   async shutdown(): Promise<void> {
+    await this.llmProvider.shutdown();
     this.mcpClient = null;
     this.agent = null;
     this.memory = { shortTerm: [], longTerm: [], social: [], strategic: [] };
+    this.decisionHistory = [];
   }
 }

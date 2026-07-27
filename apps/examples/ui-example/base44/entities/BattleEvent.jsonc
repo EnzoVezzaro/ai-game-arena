@@ -1,0 +1,45 @@
+{
+  "name": "BattleEvent",
+  "type": "object",
+  "properties": {
+    "battle_id": {
+      "type": "string"
+    },
+    "turn": {
+      "type": "number",
+      "default": 0
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "MATCH_STARTED",
+        "TURN_STARTED",
+        "OBSERVATION_CREATED",
+        "TOOL_REQUESTED",
+        "TOOL_EXECUTED",
+        "STATE_CHANGED",
+        "MESSAGE_SENT",
+        "SCORE_UPDATED",
+        "AUDIENCE_EVENT",
+        "MATCH_FINISHED",
+        "MATCH_ABORTED",
+        "AGENT_JOINED",
+        "AGENT_LEFT"
+      ]
+    },
+    "agent_id": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "battle_id",
+    "type"
+  ]
+}
