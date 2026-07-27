@@ -6,6 +6,9 @@ import { arenaCommand } from './commands/arena';
 import { battleCommand } from './commands/battle';
 import { agentCommand } from './commands/agent';
 import { serveCommand } from './commands/serve';
+import { profileCommand } from './commands/profile';
+import { exportCommand } from './commands/export';
+import { replayCommand } from './commands/replay';
 
 const commands: Record<string, (args: string[]) => Promise<void>> = {
   run: runCommand,
@@ -14,6 +17,9 @@ const commands: Record<string, (args: string[]) => Promise<void>> = {
   battle: battleCommand,
   agent: agentCommand,
   serve: serveCommand,
+  profile: profileCommand,
+  export: exportCommand,
+  replay: replayCommand,
 };
 
 async function main() {
@@ -54,10 +60,15 @@ Usage: arena <command> [options]
 Commands:
   run                         Run a battle (default: battle-tanks, aggressive vs defensive)
   plugin list                 List all installed plugins
+  plugin create <name>        Scaffold a new plugin
   arena list                  List all available arenas
   battle list                 List all battles
   battle show <id>            Show battle details
   agent list                  List all agents
+  profile list                List all profiles
+  profile create <name>       Create a new agent profile
+  export <battleId>           Export a battle to JSON
+  replay <battleId>           Replay battle events
   serve                       Start the server
 
 Options:
@@ -65,9 +76,11 @@ Options:
   --version, -v               Show version
 
 Examples:
-  arena run --arena chess --agents aggressive,defensive
+  arena run --arena chess --agents aggressive,defensive --names Alice,Bob
   arena run --seed 42
   arena plugin list
+  arena plugin create my-plugin
+  arena profile create my-profile '{"style":"aggressive"}'
   arena serve --port 3001
 `);
 }

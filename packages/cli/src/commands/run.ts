@@ -10,6 +10,8 @@ export async function runCommand(rawArgs: string[]) {
 
   const arenaId = (args.arena as string) || 'battle-tanks';
   const agentNames = (args.agents as string)?.split(',') || ['aggressive', 'defensive'];
+  // Allow --names to override per-agent display names (comma-separated list)
+  const customDisplayNames = (args.names as string)?.split(',');
   const seed = parseInt(args.seed as string) || Math.floor(Math.random() * 1000000);
   const maxTurns = parseInt(args['max-turns'] as string) || 100;
 
@@ -53,7 +55,7 @@ export async function runCommand(rawArgs: string[]) {
   // Create agents
   const agents: AgentConfig[] = agentNames.map((name, i) => ({
     id: `agent-${i + 1}`,
-    name,
+    name: customDisplayNames?.[i] ?? name,
     strategy: 'custom' as const,
   }));
 
