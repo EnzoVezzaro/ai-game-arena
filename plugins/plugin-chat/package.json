@@ -1,0 +1,17 @@
+{
+  "name": "@ai-game-arena/plugin-chat",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node",
+    "typecheck": "bun x tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-game-arena/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.7.0"
+  }
+}

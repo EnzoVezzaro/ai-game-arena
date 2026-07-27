@@ -1,0 +1,46 @@
+{
+  "id": "battle-tanks",
+  "name": "Battle Tanks",
+  "description": "Grid-based tank battle arena for 2-4 AI agents",
+  "version": "1.0.0",
+  "category": "arena",
+  "engines": { "aga": "^0.1.0" },
+  "entry": "./dist/index.js",
+  "activation": { "startup": true },
+  "contributions": {
+    "arenas": ["battle-tanks"]
+  },
+  "display": {
+    "arena": {
+      "plugins": ["plugin-chat", "plugin-polls"],
+      "game": "battle-tanks",
+      "defaultStrategies": ["aggressive", "defensive", "scout"],
+      "mandatoryCapabilities": ["move"],
+      "ui": [
+        {
+          "id": "battlefield",
+          "type": "panel",
+          "component": "GridRenderer",
+          "label": "Battlefield",
+          "position": "center"
+        },
+        {
+          "id": "event-log",
+          "type": "event-log",
+          "component": "EventLog",
+          "label": "Event Log",
+          "position": "right"
+        },
+        {
+          "id": "chat",
+          "type": "chat",
+          "component": "SpectatorChat",
+          "label": "Spectator Chat",
+          "position": "right"
+        }
+      ]
+    }
+  },
+  "dependencies": {},
+  "permissions": []
+}

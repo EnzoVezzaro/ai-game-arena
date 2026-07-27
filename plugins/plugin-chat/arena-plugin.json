@@ -1,0 +1,25 @@
+{
+  "id": "plugin-chat",
+  "name": "Chat System",
+  "version": "0.1.0",
+  "description": "Real-time chat for spectators and agents",
+  "author": "AI Game Arena",
+  "category": "interaction",
+  "engines": { "aga": "^0.1.0" },
+  "entry": "./dist/index.js",
+  "activation": { "startup": true },
+  "dependencies": {},
+  "contributions": {
+    "mcpTools": ["send_chat_message"],
+    "eventHandlers": ["MATCH_STARTED", "MATCH_FINISHED"],
+    "uiPanels": [
+      {
+        "id": "chat-panel",
+        "component": "ChatPanel",
+        "label": "Chat",
+        "position": "bottom",
+        "type": "chat"
+      }
+    ]
+  }
+}

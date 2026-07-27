@@ -1,0 +1,28 @@
+{
+  "name": "@ai-game-arena/agent-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node && bun x tsc --emitDeclarationOnly",
+    "typecheck": "bun x tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-game-arena/sdk": "workspace:*",
+    "@ai-game-arena/core": "workspace:*",
+    "@ai-game-arena/mcp": "workspace:*",
+    "@ai-game-arena/controller": "workspace:*",
+    "@ai-game-arena/observation": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

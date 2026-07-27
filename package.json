@@ -1,0 +1,32 @@
+{
+  "name": "ai-game-arena",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "plugins/*",
+    "games/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "bun run --filter '*' build",
+    "dev": "bun run --filter '@ai-game-arena/*' dev",
+    "lint": "bunx prettier --check .",
+    "format": "bunx prettier --write .",
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun test",
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules plugins/*/node_modules games/*/node_modules"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "esbuild": "^0.28.1",
+    "eslint": "^9.0.0",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0",
+    "zod": "^3.24.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

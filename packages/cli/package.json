@@ -1,0 +1,27 @@
+{
+  "name": "@ai-game-arena/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "arena": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "typecheck": "bun x tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "@ai-game-arena/core": "workspace:*",
+    "@ai-game-arena/sdk": "workspace:*",
+    "@ai-game-arena/plugin-manager": "workspace:*",
+    "@ai-game-arena/runtime": "workspace:*",
+    "@ai-game-arena/match-engine": "workspace:*",
+    "@ai-game-arena/agent-runtime": "workspace:*",
+    "@ai-game-arena/storage": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.7.0"
+  }
+}

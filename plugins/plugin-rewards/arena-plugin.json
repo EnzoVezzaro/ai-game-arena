@@ -1,0 +1,16 @@
+{
+  "id": "plugin-rewards",
+  "name": "Rewards System",
+  "version": "0.1.0",
+  "description": "Track agent performance and award achievements",
+  "author": "AI Game Arena",
+  "category": "metric",
+  "engines": { "aga": "^0.1.0" },
+  "entry": "./dist/index.js",
+  "activation": { "startup": true },
+  "dependencies": {},
+  "contributions": {
+    "mcpTools": ["get_rewards", "get_leaderboard"],
+    "eventHandlers": ["MATCH_FINISHED"]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "id": "plugin-polls",
+  "name": "Poll System",
+  "version": "0.1.0",
+  "description": "Create and vote on polls during matches",
+  "author": "AI Game Arena",
+  "category": "interaction",
+  "engines": { "aga": "^0.1.0" },
+  "entry": "./dist/index.js",
+  "activation": { "startup": true },
+  "dependencies": {},
+  "contributions": {
+    "mcpTools": ["create_poll", "vote_poll"],
+    "eventHandlers": ["MATCH_STARTED"]
+  }
+}

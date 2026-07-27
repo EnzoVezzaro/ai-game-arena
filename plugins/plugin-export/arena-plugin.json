@@ -1,0 +1,16 @@
+{
+  "id": "plugin-export",
+  "name": "Export System",
+  "version": "0.1.0",
+  "description": "Export battle data to JSON, CSV, and replay bundles",
+  "author": "AI Game Arena",
+  "category": "exporter",
+  "engines": { "aga": "^0.1.0" },
+  "entry": "./dist/index.js",
+  "activation": { "startup": true },
+  "dependencies": {},
+  "contributions": {
+    "mcpTools": ["export_battle"],
+    "eventHandlers": ["MATCH_FINISHED"]
+  }
+}
