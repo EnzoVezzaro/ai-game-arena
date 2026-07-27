@@ -1,12 +1,14 @@
 import { Hono } from 'hono';
 import { Container } from '@ai-game-arena/core';
 import { Runtime } from '@ai-game-arena/runtime';
+import { SqliteStorage } from '@ai-game-arena/storage';
 import type { AgentConfig, BattleConfig } from '@ai-game-arena/sdk';
 
 export function createBattleRoutes(container: Container) {
   const app = new Hono();
 
   const runtime = container.resolve<Runtime>('runtime');
+  const storage = container.resolve<SqliteStorage>('storage');
 
   // Create a new battle
   app.post('/', async (c) => {
@@ -65,6 +67,54 @@ export function createBattleRoutes(container: Container) {
     const id = c.req.param('id');
     await runtime.resumeBattle(id);
     return c.json({ status: 'resumed' });
+  });
+
+  // Abort a battle
+  app.post('/:id/abort', async (c) => {
+    const id = c.req.param('id');
+    await runtime.abortBattle(id);
+    return c.json({ status: 'aborted' });
+  });
+
+  app.get('/:id/replay', async (c) => {
+    const id = c.req.param('id');
+    const battle = runtime.getBattle(id);
+    if (!battle) {
+      return c.json({ error: 'Battle not found' }, 404);
+    }
+    const events = await storage.all<{ type: string; timestamp: number; payload: string; metadata: string }>(
+      'SELECT type, timestamp, payload, metadata FROM events WHERE aggregateId = ? ORDER BY timestamp',
+      [id],
+    );
+    return c.json({
+      id: battle.id,
+      arenaId: battle.arenaId,
+      agents: battle.agents,
+      events: events.map((e) => ({
+        type: e.type,
+        timestamp: e.timestamp,
+        payload: JSON.parse(e.payload),
+        metadata: JSON.parse(e.metadata),
+      })),
+    });
+  });
+
+  app.get('/:id/events', async (c) => {
+    const id = c.req.param('id');
+    const battle = runtime.getBattle(id);
+    if (!battle) {
+      return c.json({ error: 'Battle not found' }, 404);
+    }
+    const events = await storage.all<{ type: string; timestamp: number; payload: string; metadata: string }>(
+      'SELECT type, timestamp, payload, metadata FROM events WHERE aggregateId = ? ORDER BY timestamp',
+      [id],
+    );
+    return c.json(events.map((e) => ({
+      type: e.type,
+      timestamp: e.timestamp,
+      payload: JSON.parse(e.payload),
+      metadata: JSON.parse(e.metadata),
+    })));
   });
 
   return app;

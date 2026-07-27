@@ -1,74 +1,107 @@
 # TRACK.md — Implementation Progress Tracker
 
 > Updated each session. Tracks what's done, what's in-progress, and what's pending.
+> Last rebuilt: SYNC.md v2 (docs-based audit).
 
 ## Progress Summary
 
 | Phase | Task | Status | Started | Completed |
 |-------|------|--------|---------|-----------|
-| A.1   | Wire AgentRuntime.decide() to LLM provider | ✅ Done | — | Done |
-| A.2   | Dynamic frontend plugin loading | ✅ Done | — | Done |
-| A.3   | Static file serving | ✅ Done | — | Done |
-| A.4   | Battle viewer components (GridRenderer, EventLog, TurnTimeline, AgentRoster) | ✅ Done | — | Done |
-| B.1   | Complete REST API routes | ⬜ Pending | — | — |
-| B.2   | WebSocket multiplexing per battleId | ⬜ Pending | — | — |
-| B.3   | CLI completion (plugin create, export, replay, profile) | ⬜ Pending | — | — |
-| B.4   | `run --names` flag | ⬜ Pending | — | — |
-| C.1   | Wire plugin contributions | ⬜ Pending | — | — |
-| C.2   | permissions/deps in manifests | ⬜ Pending | — | — |
-| C.3   | Tournament + Leaderboard plugins | ⬜ Pending | — | — |
-| C.4   | Fog-of-war filter | ⬜ Pending | — | — |
-| D.1   | tokens.ts + composition.ts | ⬜ Pending | — | — |
-| D.2   | Dependency graph fix | ⬜ Pending | — | — |
-| D.3   | Middleware plugin system | ⬜ Pending | — | — |
-| D.4   | Dockerfile + CI | ⬜ Pending | — | — |
-| E.1   | Sync CONTRIBUTING.md with SYNC.md | ⬜ Pending | — | — |
-| E.2   | License acknowledgment in SYNC.md | ⬜ Pending | — | — |
-| E.3   | Plugin publishing guide | ⬜ Pending | — | — |
-| F.1   | Test strategy | ⬜ Pending | — | — |
-| F.2   | Error handling standards | ⬜ Pending | — | — |
-| F.3   | Observability (structured logging, health depth) | ⬜ Pending | — | — |
+| A.1   | Create tokens.ts | ✅ Done | — | Done |
+| A.2   | Create composition.ts with createContainer() | ✅ Done | — | Done |
+| A.3   | Complete HTTP API routes | ✅ Done | — | Done |
+| A.4   | WebSocket multiplexing per battleId | ⬜ Pending | — | — |
+| A.5   | DDD — Battle aggregate and value objects | ⬜ Pending | — | — |
+| A.6   | Fix dependency graph violations | ⬜ Pending | — | — |
+| B.1   | Wire plugin contributions at runtime | ⬜ Pending | — | — |
+| B.2   | Implement middleware plugin system | ⬜ Pending | — | — |
+| B.3   | Wire ObservationSystem into MatchEngine | ⬜ Pending | — | — |
+| B.4   | Fix PluginContext.storage type | ⬜ Pending | — | — |
+| B.5   | Fix Controller to implement SDK Controller interface | ⬜ Pending | — | — |
+| B.6   | Complete CLI commands | ⬜ Pending | — | — |
+| C.1   | Structured logging with correlation IDs | ⬜ Pending | — | — |
+| C.2   | Health check with depth | ⬜ Pending | — | — |
+| C.3   | Create docs/plugin-dev-guide.md | ⬜ Pending | — | — |
+| C.4   | Dockerfile | ⬜ Pending | — | — |
+| C.5   | Error handling standards | ⬜ Pending | — | — |
+| C.6   | API versioning | ⬜ Pending | — | — |
+| C.7   | Test strategy | ⬜ Pending | — | — |
+| C.8   | AgentConfig.apiKey security | ⬜ Pending | — | — |
+| D.1   | Determinism verification tooling | ⬜ Pending | — | — |
+| D.2   | Performance benchmarks | ⬜ Pending | — | — |
+| D.3   | Fog-of-war observation filter | ⬜ Pending | — | — |
+| D.4   | Battle royale arena | ⬜ Pending | — | — |
+| D.5   | Plugin sandboxing | ⬜ Pending | — | — |
+| E.1   | Metrics (Prometheus) | ⬜ Pending | — | — |
+| E.2   | Distributed tracing (OpenTelemetry) | ⬜ Pending | — | — |
+| E.3   | Crash recovery & state reconstruction | ⬜ Pending | — | — |
 | VII.1 | UI Primitives + Dark Theme | ⬜ Pending | — | — |
 | VII.2 | Battle Components (from ui-example) | ⬜ Pending | — | — |
 | VII.3 | Game Cards + Dashboard | ⬜ Pending | — | — |
 | VII.4 | Animation System | ⬜ Pending | — | — |
 | VII.5 | Layout Patterns | ⬜ Pending | — | — |
 
-## Notes
+## Completed (from prior sessions)
+
+| Item | Status |
+|------|--------|
+| Monorepo (Bun workspaces) | ✅ Done |
+| SDK types + schemas | ✅ Done |
+| Core (EventBus, Logger, Lifecycle) | ✅ Done |
+| Storage (bun:sqlite) | ✅ Done |
+| Plugin Manager (discovery, validation, topological sort) | ✅ Done |
+| MatchEngine + AgentSandbox | ✅ Done |
+| Runtime (battle orchestration) | ✅ Done |
+| MCP protocol | ✅ Done |
+| Controller (virtual input devices) | ✅ Done |
+| Observation pipeline (package exists) | ✅ Done (orphaned) |
+| Agent Runtime (4 memory compartments, LLM wiring) | ✅ Done |
+| Battle Tanks arena | ✅ Done |
+| Chess arena | ✅ Done |
+| Server (Hono REST + WebSocket) | ✅ Done |
+| Web UI (React shell with regions) | ✅ Done |
+| CLI (arena run/plugin/arena/battle/agent/serve) | ✅ Done |
+| Chat plugin | ✅ Done |
+| Polls plugin | ✅ Done |
+| Export plugin | ✅ Done |
+| Rewards plugin | ✅ Done |
+| Agent Isolation (AgentSandbox) | ✅ Done |
+| WebSocket live streaming | ✅ Done |
+| Dynamic component registry | ✅ Done |
+| Battle viewer components (GridRenderer, EventLog, AgentRoster, TurnTimeline) | ✅ Done |
+| Manifest-driven discovery | ✅ Done |
+| Zod schema validation | ✅ Done |
+| EventBus with correlation IDs | ✅ Done |
+| SQLite persistence | ✅ Done |
+| Zustand state management | ✅ Done |
+| Composition root (createContainer) | ✅ Done |
+| tokens.ts extracted from core/index.ts | ✅ Done |
+| HTTP API routes (arenas CRUD, profiles CRUD, abort/replay/events) | ✅ Done |
+| Runtime: getArenas() and abortBattle() methods | ✅ Done |
+| Command palette | ✅ Done |
+| Dock-based layout | ✅ Done |
+| Static file serving | ✅ Done |
+| LLM provider wiring (OpenAI, Ollama, Mock) | ✅ Done |
+| Provider factory | ✅ Done |
+| Plugin manifest schema (arena-plugin.json) | ✅ Done |
+| Topological dependency resolution | ✅ Done |
+| Cycle detection in plugin loading | ✅ Done |
+
+## Rules
 
 - After each session: run `bun run typecheck` + `bun run build` across all packages
 - Agent isolation is non-negotiable
 - EventBus is the single source of truth
 - Plugins declare, core orchestrates
+- Check docs/ when in doubt — `docs/README.md` and `docs/architecture/` are the source of truth
+- SYNC.md is the authoritative gap analysis; TRACK.md is the progress mirror
 
-## Compliance Audit Results
+## Compliance Quick Reference
 
-### README Compliance (9/10 compliant)
-- ✅ Plugin-Driven Shell, VS Code-style Shell, Agent Isolation, Event-Driven
-- ✅ Manifest-Driven Plugins, WebSocket, CLI, ProviderConfig, LLM Providers
-- ❌ HTTP API Routes — missing arenas CRUD, profiles CRUD, strategies, battle abort/replay/events
+### docs/README.md Compliance (28/48 compliant)
 
-### Architecture.doc Compliance (6/10 compliant)
-- ✅ Manifest-Driven Discovery, InProcessEventBus, Package Boundaries (mostly)
-- ⚠️ Hexagonal (partial — direct instantiation in agent-sandbox), Event-Driven (partial — missing BattleFinished/Aborted events)
-- ❌ DDD Tactical Patterns — no Battle aggregate, no value objects, no EventSourcedAggregate
-- ❌ Manual Composition Root — no createContainer(), no tokens.ts
-- ❌ Dependency Graph — match-engine → agent-runtime/controller (not in spec), web → match-engine (should be sdk only)
-- ❌ Tokens — tokens.ts does not exist, defined in index.ts instead
-- ⚠️ Plugin Lifecycle — missing cycle detection, stub registration methods, no rollback on failure
-- ❌ Extension Points — no PluginContext method documentation, no middleware plugin system, no observability hooks
+**✅ Done (22)**: Monorepo, SDK, Core, Storage, Plugin Manager, MatchEngine, Runtime, MCP, Controller, Observation, Agent Runtime, Battle Tanks, Chess, Server, Web UI, CLI, Chat/Polls/Export/Rewards plugins, Agent isolation, WebSocket, Component registry, Static serving, Manifest discovery, Zod schemas, Event-driven architecture
 
-### Critical Architecture Gaps to Fix
-1. Move tokens.ts from index.ts to dedicated file
-2. Create composition.ts with createContainer()
-3. Make match-engine not import agent-runtime/controller directly (use DI instead)
-4. Add missing HTTP API routes (arenas, profiles, strategies, battle abort/replay/events)
-5. Fix dependency graph violations
-6. Add DDD patterns (Battle aggregate, value objects)
-7. Add missing event publishing (BattleFinished, BattleAborted, ScoreUpdated)
-8. Define PluginContext extension points (registerCliCommand, registerMcpTool, registerServerRoute, etc.)
-9. Add middleware plugin system (auth, rate-limit, logging as plugins)
-10. Create plugin development guide (docs/plugin-dev-guide.md)
-11. Add test strategy and quality gates
-12. Add error handling standards and observability (structured logging, correlation IDs)
-13. Add API versioning strategy
+**⚠️ Partial (4)**: Composition root (inline, not createContainer), Dynamic plugin loading (stubs exist), Contribution registration (stubs do nothing), CLI (partial — missing commands)
+
+**❌ Missing (22)**: tokens.ts, composition.ts, HTTP API routes (full), WebSocket multiplexing, DDD Battle aggregate, Controller SDK interface compliance, Plugin contribution wiring, ObservationSystem integration, Structured logging, Health check depth, Complete CLI, Docker, Auth, Test strategy, Error standards, API versioning, Plugin dev guide, Dependency graph fix, Middleware plugin system, ServerMiddleware interface, Correlation IDs, AgentConfig API key security

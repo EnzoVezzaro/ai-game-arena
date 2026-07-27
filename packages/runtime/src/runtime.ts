@@ -60,6 +60,30 @@ export class Runtime {
     return this.arenas.get(id);
   }
 
+  getArenas(): ArenaPlugin[] {
+    return Array.from(this.arenas.values());
+  }
+
+  async abortBattle(battleId: string): Promise<void> {
+    const session = this.battles.get(battleId);
+    if (!session) throw new Error(`Battle not found: ${battleId}`);
+    if (!session.matchEngine) throw new Error(`Battle not started`);
+
+    await session.matchEngine.abort('Manual abort');
+    session.state.phase = 'aborted';
+    session.finishedAt = new Date();
+
+    this.logger.info(`Battle aborted: ${battleId}`, { component: 'runtime', battleId });
+
+    await this.eventBus.publish({
+      type: 'BattleAborted',
+      aggregateId: battleId,
+      timestamp: new Date(),
+      payload: { reason: 'Manual abort' },
+      metadata: { correlationId: battleId, version: 1 },
+    } as DomainEvent);
+  }
+
   async createBattle(
     arenaId: string,
     agents: AgentConfig[],
