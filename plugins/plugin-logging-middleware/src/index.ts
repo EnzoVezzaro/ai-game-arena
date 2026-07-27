@@ -6,15 +6,11 @@ export async function activate(ctx: PluginContext): Promise<void> {
     priority: 10,
     async handle(c, next) {
       const start = Date.now();
-      const method = c.req?.method ?? 'UNKNOWN';
-      const path = c.req?.url ?? c.req?.path ?? '';
+      const path = c.req?.url ?? c.req?.path ?? String(c.req ?? '');
       await next();
       const duration = Date.now() - start;
-      ctx.logger.info(`${method} ${path} ${duration}ms`, {
+      ctx.logger.info(`request ${path} ${duration}ms`, {
         component: 'middleware:logger',
-        method,
-        path,
-        duration,
       });
     },
   });

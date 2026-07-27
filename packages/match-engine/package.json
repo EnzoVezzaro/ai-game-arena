@@ -20,7 +20,8 @@
     "@ai-game-arena/core": "workspace:*",
     "@ai-game-arena/agent-runtime": "workspace:*",
     "@ai-game-arena/controller": "workspace:*",
-    "@ai-game-arena/mcp": "workspace:*"
+    "@ai-game-arena/mcp": "workspace:*",
+    "@ai-game-arena/observation": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

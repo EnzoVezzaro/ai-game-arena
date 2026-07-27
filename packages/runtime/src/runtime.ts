@@ -9,6 +9,7 @@ import type {
 } from '@ai-game-arena/sdk';
 import { MatchEngine } from '@ai-game-arena/match-engine';
 import type { MatchEngineConfig } from '@ai-game-arena/match-engine';
+import { ObservationSystem } from '@ai-game-arena/observation';
 import type { StorageAdapter } from '@ai-game-arena/sdk';
 
 export interface BattleSession {
@@ -170,7 +171,12 @@ export class Runtime {
     };
 
     const arena = this.arenas.get(session.arenaId)!;
-    session.matchEngine = new MatchEngine(arena, session.agents, matchConfig);
+    const observationSystem = new ObservationSystem();
+    session.matchEngine = new MatchEngine(arena, session.agents, matchConfig, {
+      logger: this.logger,
+      eventBus: this.eventBus,
+      observationSystem,
+    });
 
     session.state.phase = 'running';
 

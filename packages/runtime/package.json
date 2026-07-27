@@ -19,6 +19,7 @@
     "@ai-game-arena/sdk": "workspace:*",
     "@ai-game-arena/core": "workspace:*",
     "@ai-game-arena/match-engine": "workspace:*",
+    "@ai-game-arena/observation": "workspace:*",
     "@ai-game-arena/plugin-manager": "workspace:*",
     "@ai-game-arena/storage": "workspace:*"
   },

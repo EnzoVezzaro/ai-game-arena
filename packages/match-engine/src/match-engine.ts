@@ -13,6 +13,7 @@ import { AgentSandbox } from './agent-sandbox';
 import type { AgentSandboxOptions } from './agent-sandbox';
 import { Controller } from '@ai-game-arena/controller';
 import { AgentRuntime } from '@ai-game-arena/agent-runtime';
+import { ObservationSystem } from '@ai-game-arena/observation';
 
 export interface MatchEngineConfig {
   maxTurns: number;
@@ -50,6 +51,7 @@ export interface MatchEngineOptions {
   eventBus?: EventBus;
   visibility?: 'perfect' | 'filtered' | 'private';
   observationFilter?: (observation: Observation, agentId: string) => Observation;
+  observationSystem?: ObservationSystem;
 }
 
 function createNoopLogger(): Logger {
@@ -77,6 +79,7 @@ export class MatchEngine {
   private eventBus?: EventBus;
   private visibility: 'perfect' | 'filtered' | 'private';
   private observationFilter?: (observation: Observation, agentId: string) => Observation;
+  private observationSystem?: ObservationSystem;
 
   constructor(
     arena: ArenaPlugin,
@@ -91,6 +94,7 @@ export class MatchEngine {
     this.eventBus = options?.eventBus;
     this.visibility = options?.visibility ?? 'perfect';
     this.observationFilter = options?.observationFilter;
+    this.observationSystem = options?.observationSystem;
     this.state = {
       phase: 'waiting',
       currentTurn: 0,
@@ -224,6 +228,16 @@ export class MatchEngine {
 
         // 1. Get observation for this agent (filtered by arena)
         const rawObservation = this.arena.getObservation(agent.id, this.state.worldState!);
+
+        // 1b. Pass the observation through the ObservationSystem (if wired)
+        if (this.observationSystem) {
+          const availableActions = rawObservation.metadata?.['availableActions'];
+          this.observationSystem.capture(
+            agent.id,
+            (rawObservation.data?.content as Record<string, unknown>) ?? {},
+            (Array.isArray(availableActions) ? availableActions : []) as string[],
+          );
+        }
 
         // 2. Deliver to agent's sandbox (sandbox applies its own filter)
         await sandbox.receiveObservation(rawObservation);
