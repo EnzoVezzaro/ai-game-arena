@@ -1,11 +1,13 @@
 import type { AgentConfig, AgentAction, Logger, Observation } from '@ai-game-arena/sdk';
-import { Controller } from '@ai-game-arena/controller';
-import { AgentRuntime } from '@ai-game-arena/agent-runtime';
+import type { Controller } from '@ai-game-arena/sdk';
+import type { AgentRuntime } from '@ai-game-arena/agent-runtime';
 import type { ObservationFilter } from './observation-filter';
 import { createObservationFilter } from './observation-filter';
 
 export interface AgentSandboxOptions {
   logger: Logger;
+  controller: Controller;
+  runtime: AgentRuntime;
   visibility?: 'perfect' | 'filtered' | 'private';
   filterFn?: (observation: Observation, agentId: string) => Observation;
   onAction?: (action: { device: string; action: string; parameters: Record<string, unknown>; timestamp: number }) => void;
@@ -24,27 +26,17 @@ export class AgentSandbox {
     this.agentId = agentConfig.id;
     this.agentName = agentConfig.name;
     this.logger = options.logger;
+    this.controller = options.controller;
+    this.runtime = options.runtime;
 
-    // Each agent gets its own isolated controller (private input history)
-    this.controller = new Controller({
-      id: `controller-${agentConfig.id}`,
-      name: `Controller for ${agentConfig.name}`,
-    });
+    this.runtime.initialize(agentConfig);
+    this.runtime.connectToController(this.controller);
 
-    // Wire action callback to capture actions for the match engine
     this.controller.onAction((action) => {
       this._actions.push(action);
       options.onAction?.(action);
     });
 
-    // Each agent gets its own isolated runtime (private memory)
-    this.runtime = new AgentRuntime({ logger: options.logger.child({ component: 'agent-runtime', agentId: agentConfig.id }) });
-    this.runtime.initialize(agentConfig);
-
-    // Connect runtime to its private controller via MCP
-    this.runtime.connectToController(this.controller);
-
-    // Observation filter controls what this agent can see
     this.filter = createObservationFilter({
       visibility: options.visibility ?? 'perfect',
       filterFn: options.filterFn,

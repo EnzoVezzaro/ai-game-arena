@@ -30,9 +30,9 @@ async function listArenas() {
 
   console.log('🎮 Discovering arenas...\n');
 
-  const manifests = await pluginManager.discover();
-  const arenas = manifests.filter(
-    (m) => m.contributions?.arenas && m.contributions.arenas.length > 0,
+  const discovered = await pluginManager.discover();
+  const arenas = discovered.filter(
+    (d) => d.manifest.contributions?.arenas && d.manifest.contributions.arenas.length > 0,
   );
 
   if (arenas.length === 0) {
@@ -43,9 +43,9 @@ async function listArenas() {
   console.log('Available arenas:');
   console.log('─'.repeat(60));
 
-  for (const manifest of arenas) {
-    console.log(`  ${manifest.name} (${manifest.id})`);
-    console.log(`    Version: ${manifest.version}`);
+  for (const arena of arenas) {
+    console.log(`  ${arena.manifest.name} (${arena.manifest.id})`);
+    console.log(`    Version: ${arena.manifest.version}`);
     console.log();
   }
 

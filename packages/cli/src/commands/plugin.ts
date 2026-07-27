@@ -30,9 +30,9 @@ async function listPlugins() {
 
   console.log('📦 Discovering plugins...\n');
 
-  const manifests = await pluginManager.discover();
+  const discovered = await pluginManager.discover();
 
-  if (manifests.length === 0) {
+  if (discovered.length === 0) {
     console.log('No plugins found.');
     return;
   }
@@ -40,15 +40,15 @@ async function listPlugins() {
   console.log('Installed plugins:');
   console.log('─'.repeat(60));
 
-  for (const manifest of manifests) {
-    console.log(`  ${manifest.name} (${manifest.id})`);
-    console.log(`    Version: ${manifest.version}`);
-    console.log(`    Category: ${manifest.category}`);
-    if (manifest.description) {
-      console.log(`    Description: ${manifest.description}`);
+  for (const d of discovered) {
+    console.log(`  ${d.manifest.name} (${d.manifest.id})`);
+    console.log(`    Version: ${d.manifest.version}`);
+    console.log(`    Category: ${d.manifest.category}`);
+    if (d.manifest.description) {
+      console.log(`    Description: ${d.manifest.description}`);
     }
     console.log();
   }
 
-  console.log(`${manifests.length} plugin(s) found.`);
+  console.log(`${discovered.length} plugin(s) found.`);
 }

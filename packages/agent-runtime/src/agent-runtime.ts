@@ -7,8 +7,8 @@ import type {
 } from '@ai-game-arena/sdk';
 import type { Observation as ObservationType } from '@ai-game-arena/sdk';
 import { LocalMcpClient } from '@ai-game-arena/mcp';
-import type { McpClient, McpToolResult } from '@ai-game-arena/mcp';
-import type { Controller } from '@ai-game-arena/controller';
+import type { McpClient, McpToolResult, McpServer } from '@ai-game-arena/mcp';
+import type { Controller } from '@ai-game-arena/sdk';
 import type { LLMProvider } from './providers/llm-provider';
 import { createProvider } from './providers/provider-factory';
 
@@ -50,7 +50,7 @@ export class AgentRuntime {
   }
 
   async connectToController(controller: Controller): Promise<void> {
-    this.mcpClient = new LocalMcpClient(controller.getMcpServer());
+    this.mcpClient = new LocalMcpClient(controller.getMcpServer() as McpServer);
     this.logger.info(`Agent connected to controller`, {
       component: 'agent-runtime',
       agentId: this.agent?.id,

@@ -1,5 +1,5 @@
 import { McpServer } from '@ai-game-arena/mcp';
-import type { Capability, ParameterDefinition, Logger } from '@ai-game-arena/sdk';
+import type { Capability, ParameterDefinition, Logger, Controller as ControllerInterface } from '@ai-game-arena/sdk';
 
 export interface InputAction {
   device: string;
@@ -26,7 +26,7 @@ function createNoopLogger(): Logger {
   return noopLogger;
 }
 
-export class Controller {
+export class Controller implements ControllerInterface {
   readonly id: string;
   readonly name: string;
   private mcpServer: McpServer;

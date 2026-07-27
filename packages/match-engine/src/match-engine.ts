@@ -11,6 +11,8 @@ import type {
 } from '@ai-game-arena/sdk';
 import { AgentSandbox } from './agent-sandbox';
 import type { AgentSandboxOptions } from './agent-sandbox';
+import { Controller } from '@ai-game-arena/controller';
+import { AgentRuntime } from '@ai-game-arena/agent-runtime';
 
 export interface MatchEngineConfig {
   maxTurns: number;
@@ -115,8 +117,18 @@ export class MatchEngine {
 
     // Create isolated sandbox for each agent
     for (const agent of this.agents) {
+      const controller = new Controller({
+        id: `controller-${agent.id}`,
+        name: `Controller for ${agent.name}`,
+      });
+      const runtime = new AgentRuntime({
+        logger: this.logger.child({ component: 'agent-runtime', agentId: agent.id }),
+      });
+
       const sandboxOptions: AgentSandboxOptions = {
         logger: this.logger,
+        controller,
+        runtime,
         visibility: this.visibility,
         filterFn: this.observationFilter,
         onAction: (action) => {

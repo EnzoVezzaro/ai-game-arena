@@ -61,8 +61,7 @@ export type {
   MemoryEntry,
   AgentSession,
   Controller,
-  ControllerAction,
-  ActionResult,
+  InputAction,
   Capability,
   ParameterDefinition,
 } from './agent';

@@ -1,12 +1,14 @@
 import type { Observation } from './observation';
+import type { AgentConfig } from './battle';
 
 export interface AgentRuntime {
   initialize(agent: AgentConfig): Promise<void>;
   connectToController(controller: Controller): Promise<void>;
   observe(observation: Observation): Promise<void>;
   decide(): Promise<AgentAction>;
-  communicate(message: AgentMessage): Promise<void>;
+  communicate(message: AgentMessage, to?: string): Promise<void>;
   getMemory(): AgentMemory;
+  getLastObservation(): Observation | null;
   shutdown(): Promise<void>;
 }
 
@@ -46,30 +48,27 @@ export interface AgentSession {
   readonly leftAt?: Date;
 }
 
-// Import the types we need
-import type { AgentConfig } from './battle';
-
-// Forward declare Controller to avoid circular deps
-export interface Controller {
-  readonly id: string;
-  readonly name: string;
-  initialize(): Promise<void>;
-  getCapabilities(): Capability[];
-  execute(action: ControllerAction): Promise<ActionResult>;
-  shutdown(): Promise<void>;
-}
-
-export interface ControllerAction {
-  readonly agentId: string;
+export interface InputAction {
   readonly device: string;
   readonly action: string;
   readonly parameters: Record<string, unknown>;
+  readonly timestamp: number;
 }
 
-export interface ActionResult {
-  readonly success: boolean;
-  readonly data?: unknown;
-  readonly error?: string;
+export interface Controller {
+  readonly id: string;
+  readonly name: string;
+  registerTool(
+    name: string,
+    description: string,
+    inputSchema: Record<string, unknown>,
+    handler: (args: Record<string, unknown>) => Promise<unknown>,
+  ): void;
+  onAction(callback: (action: InputAction) => void): void;
+  getMcpServer(): unknown;
+  getCapabilities(): Capability[];
+  getInputHistory(): InputAction[];
+  clearHistory(): void;
 }
 
 export interface Capability {

@@ -54,7 +54,13 @@ export class BattleWebSocketServer {
     for (const [id, client] of this.clients) {
       try {
         if (client.ws.readyState === 1) {
-          client.ws.send(message);
+          if (client.battleId) {
+            if (event.aggregateId === client.battleId) {
+              client.ws.send(message);
+            }
+          } else {
+            client.ws.send(message);
+          }
         } else {
           deadClients.push(id);
         }
