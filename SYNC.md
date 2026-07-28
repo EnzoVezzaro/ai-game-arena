@@ -15,7 +15,7 @@
 | docs/roadmap/roadmap.md | ~28 | ~20 | ~8 | — |
 | **Total** | **~258** | **~208** | **~40** | **~10** |
 
-The codebase is roughly 80% complete against the full documentation spec. The remaining gaps are in **developer experience tooling** (Docker, plugin dev guide, test strategy, API key security) and **Phase 2+ roadmap items** (metrics, tracing, crash recovery, auth, sandboxing, fog-of-war, battle royale).
+The codebase is roughly 85% complete against the full documentation spec. All Phase A, B, and C action items are complete. The remaining gaps are in **Phase 2+ roadmap items** (metrics, tracing, crash recovery, auth, sandboxing, fog-of-war, battle royale) and **UI polish** (dark theme, animation, layout patterns).
 
 ---
 
@@ -654,12 +654,12 @@ Each phase should be implemented in 1-3 sessions. Checkpoint after each: `bun ru
 | 40 | Structured logging with correlation IDs | ✅ Done |
 | 41 | Health check depth | ✅ Done |
 | 42 | Complete CLI | ✅ Done |
-| 43 | Docker support | ❌ Missing |
+| 43 | Docker support | ✅ Done |
 | 44 | Auth & authorization | ❌ Missing |
-| 45 | Test strategy | ❌ Missing |
+| 45 | Test strategy | ✅ Done |
 | 46 | Error handling standards | ✅ Done |
 | 47 | API versioning | ✅ Done |
-| 48 | Plugin dev guide | ❌ Missing |
+| 48 | Plugin dev guide | ✅ Done |
 
 ---
 
@@ -681,12 +681,12 @@ Each phase should be implemented in 1-3 sessions. Checkpoint after each: `bun ru
 | B.6   | Complete CLI commands | ✅ Done |
 | C.1   | Structured logging with correlation IDs | ✅ Done |
 | C.2   | Health check with depth | ✅ Done |
-| C.3   | Create docs/plugin-dev-guide.md | ⬜ Pending |
-| C.4   | Dockerfile | ⬜ Pending |
+| C.3   | Create docs/plugin-dev-guide.md | ✅ Done |
+| C.4   | Dockerfile | ✅ Done |
 | C.5   | Error handling standards | ✅ Done |
 | C.6   | API versioning | ✅ Done |
-| C.7   | Test strategy | ⬜ Pending |
-| C.8   | AgentConfig.apiKey security | ⬜ Pending |
+| C.7   | Test strategy | ✅ Done |
+| C.8   | AgentConfig.apiKey security | ✅ Done |
 | D.1   | Determinism verification tooling | ⬜ Pending |
 | D.2   | Performance benchmarks | ⬜ Pending |
 | D.3   | Fog-of-war observation filter | ⬜ Pending |

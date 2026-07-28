@@ -1,6 +1,7 @@
 import type { LLMProvider, LLMResponse } from './llm-provider';
 import type { McpToolDefinition } from '@ai-game-arena/mcp';
 import type { AgentConfig, ProviderConfig } from '@ai-game-arena/sdk';
+import { resolveApiKey, decryptApiKey } from './api-key';
 
 export class OpenAIProvider implements LLMProvider {
   readonly name = 'openai';
@@ -14,7 +15,9 @@ export class OpenAIProvider implements LLMProvider {
     tools: McpToolDefinition[],
     history: Array<{ role: 'user' | 'assistant' | 'tool'; content: string }>,
   ): Promise<LLMResponse> {
-    const apiKey = agent.apiKey ?? this.config.apiKey;
+    const apiKey = decryptApiKey(
+      resolveApiKey('openai', agent, this.config) ?? '',
+    );
     const model = agent.model ?? this.config.model;
 
     const systemPrompt = this.buildSystemPrompt(agent, tools);

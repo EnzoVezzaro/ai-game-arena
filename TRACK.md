@@ -21,12 +21,12 @@
 | B.6   | Complete CLI commands | ✅ Done | — | Done |
 | C.1   | Structured logging with correlation IDs | ✅ Done | — | Done |
 | C.2   | Health check with depth | ✅ Done | — | Done |
-| C.3   | Create docs/plugin-dev-guide.md | ⬜ Pending | — | — |
-| C.4   | Dockerfile | ⬜ Pending | — | — |
+| C.3   | Create docs/plugin-dev-guide.md | ✅ Done | — | Done |
+| C.4   | Dockerfile | ✅ Done | — | Done |
 | C.5   | Error handling standards | ✅ Done | — | Done |
 | C.6   | API versioning | ✅ Done | — | Done |
-| C.7   | Test strategy | ⬜ Pending | — | — |
-| C.8   | AgentConfig.apiKey security | ⬜ Pending | — | — |
+| C.7   | Test strategy | ✅ Done | — | Done |
+| C.8   | AgentConfig.apiKey security | ✅ Done | — | Done |
 | D.1   | Determinism verification tooling | ⬜ Pending | — | — |
 | D.2   | Performance benchmarks | ⬜ Pending | — | — |
 | D.3   | Fog-of-war observation filter | ⬜ Pending | — | — |
