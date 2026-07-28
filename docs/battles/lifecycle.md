@@ -59,8 +59,6 @@
   ],
   "plugins": ["plugin-chat", "plugin-polls", "plugin-metrics"],
   "match": {
-    "maxTurns": 100,
-    "timeout": "30m",
     "seed": 42
   },
   "metadata": {
@@ -70,6 +68,16 @@
   }
 }
 ```
+
+> **Note:** `maxTurns` and `turnTimeout` are intentionally omitted from the
+> request the frontend sends. The runtime defaults `maxTurns` to `Infinity`
+> and `turnTimeout` to `0` — battles run until the arena's win condition
+> fires, or until an admin pauses/resumes/aborts. The only latency bound is
+> the provider retry policy inside the agent runtime (the agent's LLM call is
+> retried a small number of times before the agent is treated as
+> non-functional and the battle aborts). `seed` is auto-generated server-side
+> for reproducible replays; clients may override it only for deterministic
+> test suites.
 
 ---
 
@@ -81,14 +89,14 @@ Created → Initializing → Running → Paused → Completed / Aborted
 
 ### States
 
-| State | Description | Valid Transitions |
-|-------|-------------|-------------------|
-| **Created** | Battle definition validated, components resolved | → Initializing |
-| **Initializing** | Arena initialized, game launched, agents connected, plugins activated | → Running, → Aborted |
-| **Running** | Match engine drives interaction loop | → Paused, → Completed, → Aborted |
-| **Paused** | Battle suspended (spectator interaction, admin action) | → Running, → Aborted |
-| **Completed** | Win condition met or max turns reached | (terminal) |
-| **Aborted** | Error, timeout, or manual termination | (terminal) |
+| State            | Description                                                           | Valid Transitions                |
+| ---------------- | --------------------------------------------------------------------- | -------------------------------- |
+| **Created**      | Battle definition validated, components resolved                      | → Initializing                   |
+| **Initializing** | Arena initialized, game launched, agents connected, plugins activated | → Running, → Aborted             |
+| **Running**      | Match engine drives interaction loop                                  | → Paused, → Completed, → Aborted |
+| **Paused**       | Battle suspended (spectator interaction, admin action)                | → Running, → Aborted             |
+| **Completed**    | Win condition met or max turns reached                                | (terminal)                       |
+| **Aborted**      | Error, timeout, or manual termination                                 | (terminal)                       |
 
 ---
 
@@ -107,9 +115,9 @@ export interface BattleConfig {
 }
 
 export interface MatchConfig {
-  readonly maxTurns: number;
-  readonly timeout: Duration; // ISO 8601 or ms
-  readonly seed?: number;
+  readonly maxTurns: number; // default Infinity — no cap
+  readonly timeout: number; // default 0 — no per-turn wall-clock limit
+  readonly seed?: number; // auto-generated server-side when omitted
   readonly deterministic: boolean;
   readonly replayEnabled: boolean;
 }
@@ -123,14 +131,8 @@ export interface AgentConfig {
   readonly capabilities?: CapabilityId[]; // Override arena defaults
 }
 
-export type Strategy = 
-  | 'aggressive' 
-  | 'defensive' 
-  | 'scout' 
-  | 'balanced' 
-  | 'tactical' 
-  | 'support' 
-  | 'custom';
+export type Strategy =
+  'aggressive' | 'defensive' | 'scout' | 'balanced' | 'tactical' | 'support' | 'custom';
 ```
 
 ---
@@ -235,7 +237,9 @@ export class Battle extends EventSourcedAggregate<BattleId> {
 
       case 'BattleAborted':
       case 'BattleFinished':
-        this.state = this.state.transition(event.type === 'BattleFinished' ? 'completed' : 'aborted');
+        this.state = this.state.transition(
+          event.type === 'BattleFinished' ? 'completed' : 'aborted',
+        );
         this.replay.record(event);
         this.replay.finalize();
         break;
@@ -259,32 +263,32 @@ export class BattleOrchestrator {
     private pluginManager: PluginManager,
     private eventBus: EventBus,
     private replayManager: ReplayManager,
-    private config: BattleOrchestratorConfig
+    private config: BattleOrchestratorConfig,
   ) {}
 
   async createBattle(config: BattleConfig): Promise<BattleInstance> {
     const battle = new BattleInstance(config);
-    
+
     // 1. Resolve arena
     battle.arena = await this.arenaManager.getArena(config.arenaId);
     if (!battle.arena) throw new BattleError(`Arena ${config.arenaId} not found`);
-    
+
     // 2. Resolve game
     battle.game = await this.gameManager.getGame(config.gameId);
     if (!battle.game) throw new BattleError(`Game ${config.gameId} not found`);
-    
+
     // 3. Validate compatibility
     this.validateCompatibility(battle.arena, battle.game, config);
-    
+
     // 4. Create agent sessions
     for (const agentConfig of config.agents) {
       const session = await this.createAgentSession(agentConfig, battle);
       battle.agents.push(session);
     }
-    
+
     // 5. Activate plugins
     battle.plugins = await this.pluginManager.activatePlugins(config.plugins, battle);
-    
+
     return battle;
   }
 
@@ -292,24 +296,24 @@ export class BattleOrchestrator {
     // Initialize arena with seed
     const seed = battle.config.match.seed || Date.now();
     const worldState = battle.arena.initialize(seed);
-    
+
     // Launch game
     await battle.game.launch();
     await battle.game.attachController(battle.controller);
     await battle.game.attachObservation(battle.observation);
     await battle.game.start();
-    
+
     // Connect agents
     for (const agent of battle.agents) {
       await agent.connect(battle.controller, battle.observation);
       await agent.initialize(battle.arena.getInitialObservation(agent.id, worldState));
     }
-    
+
     // Activate battle plugins
     for (const plugin of battle.plugins) {
       await plugin.onBattleStart(battle);
     }
-    
+
     // Emit initialized event
     this.eventBus.publish({ type: 'BattleInitialized', aggregateId: battle.id, payload: { seed } });
   }
@@ -317,23 +321,23 @@ export class BattleOrchestrator {
   async runBattle(battle: BattleInstance): Promise<BattleResult> {
     battle.state = 'running';
     this.eventBus.publish({ type: 'BattleStarted', aggregateId: battle.id });
-    
+
     while (battle.state === 'running') {
       // Check timeout
       if (this.isTimedOut(battle)) {
         await this.abortBattle(battle, 'Timeout');
         break;
       }
-      
+
       // Check max turns
       if (battle.turn >= battle.config.match.maxTurns) {
         await this.finishBattle(battle, 'max-turns');
         break;
       }
-      
+
       // Execute turn
       await this.executeTurn(battle);
-      
+
       // Check win condition
       const winCondition = battle.arena.checkWinCondition(battle.worldState);
       if (winCondition) {
@@ -341,40 +345,40 @@ export class BattleOrchestrator {
         break;
       }
     }
-    
+
     return battle.getResult();
   }
 
   private async executeTurn(battle: BattleInstance): Promise<void> {
     const activeAgent = this.selectActiveAgent(battle);
-    
+
     // 1. Capture observation
     const observation = battle.arena.getObservation(activeAgent.id, battle.worldState);
-    
+
     // 2. Deliver to agent
     await activeAgent.observe(observation);
-    
+
     // 3. Agent decides
     const action = await activeAgent.decide();
-    
+
     // 4. Execute via controller
     const result = await battle.controller.execute({
       agentId: activeAgent.id,
       tool: action.tool,
       params: action.params,
     });
-    
+
     // 5. Apply to arena
     const outcome = battle.arena.executeAction(action, battle.worldState);
     battle.worldState = outcome.newState;
-    
+
     // 6. Emit events
-    this.eventBus.publish({ 
-      type: 'ActionExecuted', 
-      aggregateId: battle.id, 
-      payload: { agentId: activeAgent.id, action, outcome, turn: battle.turn } 
+    this.eventBus.publish({
+      type: 'ActionExecuted',
+      aggregateId: battle.id,
+      payload: { agentId: activeAgent.id, action, outcome, turn: battle.turn },
     });
-    
+
     battle.turn++;
   }
 }
@@ -488,7 +492,7 @@ export class BattleInstance {
       reason: this.state.reason,
       turns: this.turn,
       duration: this.finishedAt ? this.finishedAt.getTime() - (this.startedAt?.getTime() || 0) : 0,
-      agents: this.agents.map(a => ({ id: a.id, score: a.score })),
+      agents: this.agents.map((a) => ({ id: a.id, score: a.score })),
       replayId: this.replay.id,
     };
   }
@@ -506,14 +510,14 @@ For reproducible replays:
 export class DeterministicBattle {
   // All RNG seeded
   private rng: SeededRandom;
-  
+
   // Fixed timestep
   private readonly TICK_RATE = 20; // Hz
-  
+
   // No wall-clock time in logic
   // No Math.random() - use this.rng
   // No Date.now() - use this.tick * (1000/TICK_RATE)
-  
+
   // Event ordering deterministic
   // Same seed = same battle
 }
@@ -521,7 +525,7 @@ export class DeterministicBattle {
 export function verifyDeterminism(battleId: BattleId): DeterminismReport {
   const original = ReplayManager.get(battleId);
   const replayed = BattleOrchestrator.replay(battleId);
-  
+
   return {
     deterministic: deepEqual(original.events, replayed.events),
     differences: findDifferences(original.events, replayed.events),
@@ -542,7 +546,10 @@ export type BattleEvent =
   | { type: 'BattleStarted'; payload: {} }
   | { type: 'TurnStarted'; payload: { turn: number; activeAgent: AgentId } }
   | { type: 'ObservationCaptured'; payload: { agentId: AgentId; observation: Observation } }
-  | { type: 'ActionExecuted'; payload: { agentId: AgentId; action: AgentAction; outcome: ActionOutcome; turn: number } }
+  | {
+      type: 'ActionExecuted';
+      payload: { agentId: AgentId; action: AgentAction; outcome: ActionOutcome; turn: number };
+    }
   | { type: 'TurnFinished'; payload: { turn: number } }
   | { type: 'BattlePaused'; payload: { reason: string } }
   | { type: 'BattleResumed'; payload: {} }
@@ -583,7 +590,7 @@ describe('Battle', () => {
     });
 
     await battle.start();
-    
+
     expect(battle.state).toBe('completed');
     expect(battle.turn).toBeLessThanOrEqual(10);
     expect(battle.replay).toBeDefined();
@@ -591,12 +598,12 @@ describe('Battle', () => {
 
   it('pauses and resumes correctly', async () => {
     const battle = await orchestrator.createBattle({ ... });
-    
+
     const runPromise = battle.start();
     await waitForTurn(battle, 2);
     await battle.pause();
     expect(battle.state).toBe('paused');
-    
+
     await battle.resume();
     await runPromise;
     expect(battle.state).toBe('completed');
@@ -604,13 +611,13 @@ describe('Battle', () => {
 
   it('is deterministic with same seed', async () => {
     const config = { ..., match: { ..., seed: 123, deterministic: true } };
-    
+
     const battle1 = await orchestrator.createBattle(config);
     await battle1.start();
-    
+
     const battle2 = await orchestrator.createBattle(config);
     await battle2.start();
-    
+
     expect(battle1.replay.events).toEqual(battle2.replay.events);
     expect(battle1.getResult().winner).toBe(battle2.getResult().winner);
   });

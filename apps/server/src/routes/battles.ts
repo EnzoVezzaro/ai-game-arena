@@ -12,16 +12,21 @@ export function createBattleRoutes(container: Container) {
 
   // Create a new battle
   app.post('/', async (c) => {
-    const { arenaId, agents, config } = await c.req.json<{
+    const { arenaId, gameId, agents, config } = await c.req.json<{
       arenaId: string;
+      gameId?: string;
       agents: AgentConfig[];
       config?: Partial<BattleConfig>;
     }>();
-    const battle = await runtime.createBattle(arenaId, agents, config);
+    const battle = await runtime.createBattle(arenaId, agents, {
+      ...config,
+      gameId,
+    });
     return c.json(
       {
         id: battle.id,
         arenaId: battle.arenaId,
+        gameId: battle.gameId,
         state: battle.state,
         createdAt: battle.createdAt,
       },
@@ -39,6 +44,7 @@ export function createBattleRoutes(container: Container) {
     return c.json({
       id: battle.id,
       arenaId: battle.arenaId,
+      gameId: battle.gameId,
       agents: battle.agents,
       config: battle.config,
       state: battle.state,
@@ -82,7 +88,12 @@ export function createBattleRoutes(container: Container) {
     if (!battle) {
       return c.json({ error: 'Battle not found' }, 404);
     }
-    const events = await storage.all<{ type: string; timestamp: number; payload: string; metadata: string }>(
+    const events = await storage.all<{
+      type: string;
+      timestamp: number;
+      payload: string;
+      metadata: string;
+    }>(
       'SELECT type, timestamp, payload, metadata FROM events WHERE aggregate_id = ? ORDER BY timestamp',
       [id],
     );
@@ -105,16 +116,23 @@ export function createBattleRoutes(container: Container) {
     if (!battle) {
       return c.json({ error: 'Battle not found' }, 404);
     }
-    const events = await storage.all<{ type: string; timestamp: number; payload: string; metadata: string }>(
+    const events = await storage.all<{
+      type: string;
+      timestamp: number;
+      payload: string;
+      metadata: string;
+    }>(
       'SELECT type, timestamp, payload, metadata FROM events WHERE aggregate_id = ? ORDER BY timestamp',
       [id],
     );
-    return c.json(events.map((e) => ({
-      type: e.type,
-      timestamp: e.timestamp,
-      payload: JSON.parse(e.payload),
-      metadata: JSON.parse(e.metadata),
-    })));
+    return c.json(
+      events.map((e) => ({
+        type: e.type,
+        timestamp: e.timestamp,
+        payload: JSON.parse(e.payload),
+        metadata: JSON.parse(e.metadata),
+      })),
+    );
   });
 
   return app;

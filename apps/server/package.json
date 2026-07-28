@@ -18,7 +18,10 @@
     "@ai-game-arena/runtime": "workspace:*",
     "@ai-game-arena/match-engine": "workspace:*",
     "@ai-game-arena/agent-runtime": "workspace:*",
-    "@ai-game-arena/storage": "workspace:*"
+    "@ai-game-arena/storage": "workspace:*",
+    "@ai-game-arena/games-manager": "workspace:*",
+    "@ai-game-arena/packages-manager": "workspace:*",
+    "@ai-game-arena/arenas-manager": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest",

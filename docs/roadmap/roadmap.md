@@ -24,7 +24,7 @@
 - [x] Zod schema validation
 
 ### Plugin System
-- [x] Manifest-driven discovery (`arena-plugin.json`)
+- [x] Manifest-driven discovery (`game.json` for games, `plugin.json` for plugins and `arena.json` for arenas)
 - [x] Topological dependency resolution
 - [x] Contribution registration (tools, events, UI, routes, CLI)
 - [x] Activation lifecycle with scoped context

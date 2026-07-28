@@ -49,7 +49,7 @@ The codebase is roughly 85% complete against the full documentation spec. All Ph
 | WebSocket live streaming | `apps/server/src/ws/battle-ws.ts` | ✅ (basic, no multiplexing) |
 | Dynamic component registry | `apps/web/src/runtime/registry/` | ✅ |
 | Battle viewer components (GridRenderer, EventLog, AgentRoster, TurnTimeline) | `apps/web/src/components/battle/` | ✅ |
-| Plugin manifest schema (arena-plugin.json) | All plugins/games | ✅ |
+| Plugin manifest schema (`game.json` for games, `plugin.json` for plugins) | All plugins/games | ✅ |
 | Manifest-driven discovery | `packages/plugin-manager/src/` | ✅ |
 | Topological dependency resolution | `packages/plugin-manager/src/` | ✅ |
 | Zod schema validation | `packages/sdk/src/schemas/` | ✅ |
@@ -156,7 +156,7 @@ The codebase is roughly 85% complete against the full documentation spec. All Ph
 | Spec Item | Code Status | Gap |
 |-----------|-------------|-----|
 | Manifest-driven discovery via file system scan | `discover()` scans plugin dirs | N/A |
-| Validation of arena-plugin.json | `validate()` exists in plugin-manager | N/A |
+| Validation of `game.json`/`plugin.json` | `validate()` exists in plugin-manager | N/A |
 | Dependency resolution (topological sort) | `topologicalSort()` exists | N/A |
 | Cycle detection | Yes, via `visited`/`visiting` sets | N/A |
 | Hot reload in development | Missing | No watch/reload mechanism |
@@ -211,7 +211,7 @@ The codebase is roughly 85% complete against the full documentation spec. All Ph
 
 | Spec Item | Code Status | Gap |
 |-----------|-------------|-----|
-| Manifest schema (`arena-plugin.json`) | Implemented in all plugins/games | N/A |
+| Manifest schema (`game.json` for games, `plugin.json` for plugins) | Implemented in all plugins/games | N/A |
 | Categories (arena, game, plugin, metric, exporter) | Implemented | N/A |
 | Activation lifecycle | Implemented in plugin-manager | No cycle detection for dependency loops |
 | Stubs registration | `createContext()` creates stubs for server routes, CLI commands, etc. | Stubs do nothing |

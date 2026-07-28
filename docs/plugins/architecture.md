@@ -50,7 +50,7 @@
 
 ## Plugin Manifest
 
-Every plugin has an `arena-plugin.json` at its root:
+Every plugin has a `plugin.json` at its root:
 
 ```json
 {
@@ -407,12 +407,12 @@ Discovery → Validation → Dependency Resolution → Registration → Activati
 
 ### 1. Discovery
 
-Scans directories for `arena-plugin.json`:
+Scans directories for `plugin.json` (or `arena.json` for arenas, `game.json` for games):
 
 ```typescript
 export async function discoverPlugins(
   roots: string[],
-  manifestName = 'arena-plugin.json'
+  manifestName = 'plugin.json' // or 'arena.json' for arenas, 'game.json' for games
 ): Promise<DiscoveredPlugin[]> {
   // Recursively scan roots
   // Return { root, path, manifestPath, manifest, relativePath }

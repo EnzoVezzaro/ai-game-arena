@@ -15,11 +15,15 @@ import { createBattleRoutes } from './routes/battles';
 import { createAgentRoutes } from './routes/agents';
 import { createPluginRoutes } from './routes/plugins';
 import { createArenasRoutes } from './routes/arenas';
+import { createGamesRoutes } from './routes/games';
 import { createProfilesRoutes } from './routes/profiles';
 import { createModelsRoutes } from './routes/models';
 import { createPackagesRoutes } from './routes/packages';
 import { createArtifactRoutes } from './routes/artifacts';
 import { BattleWebSocketServer } from './ws/battle-ws';
+import { GamesManager } from '@ai-game-arena/games-manager';
+import { PackagesManager } from '@ai-game-arena/packages-manager';
+import { ArenasManager } from '@ai-game-arena/arenas-manager';
 
 const projectRoot = new URL('../../..', import.meta.url).pathname;
 const webDistPath = join(projectRoot, 'apps', 'web', 'dist');
@@ -78,9 +82,17 @@ export async function createServer(config: ServerConfig) {
   const wsServer = new BattleWebSocketServer(eventBus);
   container.register('wsServer', wsServer);
 
-  // Plugin manager
+  // Entity managers
+  const gamesManager = new GamesManager(projectRoot);
+  container.register('gamesManager', gamesManager);
+  const packagesManager = new PackagesManager(projectRoot);
+  container.register('packagesManager', packagesManager);
+  const arenasManager = new ArenasManager(projectRoot, log);
+  container.register('arenasManager', arenasManager);
+
+  // Plugin manager — only scans plugins/
   const pluginManager = new PluginManager({
-    pluginDirs: [`${projectRoot}/plugins`, `${projectRoot}/games`],
+    pluginDirs: [`${projectRoot}/plugins`],
     logger: log,
     eventBus,
     storage,
@@ -95,29 +107,15 @@ export async function createServer(config: ServerConfig) {
   });
   container.register('runtime', runtime);
 
-  // Load plugins
+  // Load plugins + arenas independently
   try {
     await pluginManager.loadAll();
     log.info('Plugins loaded', { component: 'server' });
 
-    // Register discovered arenas with runtime
-    for (const plugin of pluginManager.getAllPlugins()) {
-      const arenaIds = plugin.manifest.contributions.arenas ?? [];
-      if (arenaIds.length > 0) {
-        const arenaInstance = plugin.module as { default?: unknown } | undefined;
-        const arenaCandidate = arenaInstance?.default ?? arenaInstance;
-        if (arenaCandidate && typeof arenaCandidate === 'function') {
-          const arena = new (
-            arenaCandidate as new () => import('@ai-game-arena/sdk').ArenaPlugin
-          )();
-          for (const arenaId of arenaIds) {
-            runtime.registerArena(arenaId, arena);
-            log.info(`Registered arena "${arenaId}" from plugin "${plugin.manifest.id}"`, {
-              component: 'server',
-            });
-          }
-        }
-      }
+    const arenas = await arenasManager.loadAll();
+    for (const arena of arenas) {
+      runtime.registerArena(arena.arenaId, arena.instance);
+      log.info(`Registered arena "${arena.arenaId}"`, { component: 'server' });
     }
 
     // Apply plugin-contributed middleware
@@ -202,10 +200,11 @@ export async function createServer(config: ServerConfig) {
   app.route('/api/v1/battles', createBattleRoutes(container));
   app.route('/api/v1/agents', createAgentRoutes(container));
   app.route('/api/v1/plugins', createPluginRoutes(container));
-  app.route('/api/v1/arenas', createArenasRoutes(container));
+  app.route('/api/v1/arenas', createArenasRoutes(container, projectRoot));
+  app.route('/api/v1/games', createGamesRoutes(gamesManager));
   app.route('/api/v1/profiles', createProfilesRoutes(container));
   app.route('/api/v1/models', createModelsRoutes());
-  app.route('/api/v1/packages', createPackagesRoutes(projectRoot));
+  app.route('/api/v1/packages', createPackagesRoutes(packagesManager));
   app.route('/api/v1/artifacts', createArtifactRoutes(container, projectRoot));
 
   // Unversioned aliases for frontend compatibility
@@ -213,10 +212,11 @@ export async function createServer(config: ServerConfig) {
   app.route('/api/battles', createBattleRoutes(container));
   app.route('/api/agents', createAgentRoutes(container));
   app.route('/api/plugins', createPluginRoutes(container));
-  app.route('/api/arenas', createArenasRoutes(container));
+  app.route('/api/arenas', createArenasRoutes(container, projectRoot));
+  app.route('/api/games', createGamesRoutes(gamesManager));
   app.route('/api/profiles', createProfilesRoutes(container));
   app.route('/api/models', createModelsRoutes());
-  app.route('/api/packages', createPackagesRoutes(projectRoot));
+  app.route('/api/packages', createPackagesRoutes(packagesManager));
   app.route('/api/artifacts', createArtifactRoutes(container, projectRoot));
 
   // C.2: Deep health check (server uptime, db, plugin system)

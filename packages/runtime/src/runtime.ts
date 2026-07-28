@@ -15,6 +15,7 @@ import type { StorageAdapter } from '@ai-game-arena/sdk';
 export interface BattleSession {
   id: string;
   arenaId: string;
+  gameId?: string;
   agents: AgentConfig[];
   config: BattleConfig;
   state: BattleState;
@@ -25,12 +26,7 @@ export interface BattleSession {
 }
 
 export type BattlePhase =
-  | 'created'
-  | 'initializing'
-  | 'running'
-  | 'paused'
-  | 'completed'
-  | 'aborted';
+  'created' | 'initializing' | 'running' | 'paused' | 'completed' | 'aborted';
 
 export interface BattleState {
   phase: BattlePhase;
@@ -102,9 +98,15 @@ export class Runtime {
 
     const battleConfig: BattleConfig = {
       maxAgents: config.maxAgents ?? arena.config.maxPlayers,
-      turnTimeout: config.turnTimeout ?? 30000,
-      maxTurns: config.maxTurns ?? 100,
-      seed: config.seed ?? Math.floor(Math.random() * 1000000),
+      // No per-turn timeout: agents respond on their own; the only latency
+      // bound is the provider retry policy inside the agent runtime.
+      turnTimeout: config.turnTimeout ?? 0,
+      // No turn cap: battles run until the arena's win condition fires or an
+      // admin pauses/resumes/aborts. Infinity keeps the match-engine's
+      // `currentTurn >= maxTurns` guard inert.
+      maxTurns: config.maxTurns ?? Number.POSITIVE_INFINITY,
+      seed: config.seed ?? Math.floor(Math.random() * 1_000_000),
+      gameId: config.gameId,
     };
 
     // Validate agent count
@@ -120,6 +122,7 @@ export class Runtime {
     const session: BattleSession = {
       id: battleId,
       arenaId,
+      gameId: config.gameId,
       agents,
       config: battleConfig,
       state: {
@@ -302,11 +305,7 @@ export class Runtime {
         causation_id: event.metadata.causationId ?? null,
       });
     } catch (error) {
-      this.logger.error(
-        'Failed to persist event',
-        { component: 'runtime' },
-        error as Error,
-      );
+      this.logger.error('Failed to persist event', { component: 'runtime' }, error as Error);
     }
   }
 }

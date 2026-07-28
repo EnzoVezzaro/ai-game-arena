@@ -903,9 +903,7 @@ Plugins can provide:
 
 Create:
 
-```
-arena-plugin.json
-```
+Games use `game.json`. Plugins use `plugin.json`. Arenas use `arena.json`.
 
 Define:
 

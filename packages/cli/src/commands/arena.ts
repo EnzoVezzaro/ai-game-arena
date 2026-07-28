@@ -22,7 +22,7 @@ async function listArenas() {
   const storage = new SqliteStorage(':memory:');
 
   const pluginManager = new PluginManager({
-    pluginDirs: ['./plugins', '../games'],
+    pluginDirs: ['./plugins', '../games', '../arenas'],
     logger,
     eventBus,
     storage,

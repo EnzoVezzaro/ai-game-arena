@@ -55,7 +55,8 @@ function parseManifestFromBuffer(buf: Buffer): ParsedManifest | null {
 }
 
 /**
- * Extracts a zip and reads `arena-plugin.json` (or `manifest.json` / `game.json`).
+ * Extracts a zip and reads the manifest (`plugin.json` for plugins,
+ * `game.json` for games, `arena.json` for arenas, or `manifest.json` as fallback).
  * Returns parsed manifest + on-disk slug resolved from directory structure inside the zip
  * (top-level folder name, or manifest.id if single-file).
  */
@@ -126,7 +127,7 @@ export function createArtifactRoutes(container: Container, projectRoot: string) 
       return c.json(
         {
           error:
-            'No arena-plugin.json / manifest.json / game.json found in zip root or single subdir',
+            'No plugin.json / game.json / arena.json / manifest.json found in zip root or single subdir',
         },
         400,
       );
@@ -290,7 +291,7 @@ async function findManifest(
   root: string,
 ): Promise<{ manifest: ParsedManifest; basePath: string } | null> {
   // 1. Direct at root
-  for (const name of ['arena-plugin.json', 'manifest.json', 'game.json']) {
+  for (const name of ['plugin.json', 'game.json', 'arena.json', 'manifest.json']) {
     const p = join(root, name);
     if (existsSync(p)) {
       const buf = await readFile(p);
@@ -307,7 +308,7 @@ async function findManifest(
       const subDir = dirs[0];
       if (subDir) {
         const sub = join(root, subDir.name);
-        for (const name of ['arena-plugin.json', 'manifest.json', 'game.json']) {
+        for (const name of ['plugin.json', 'game.json', 'arena.json', 'manifest.json']) {
           const p = join(sub, name);
           if (existsSync(p)) {
             const buf = await readFile(p);

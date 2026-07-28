@@ -14,7 +14,7 @@ export function createPluginRoutes(container: Container) {
   app.get('/', (c) => {
     const serverRoutes = pluginManager.getRegisteredServerRoutes();
     const cliCommands = pluginManager.getRegisteredCliCommands();
-    const plugins = pluginManager.getAllPlugins().filter((p) => !p.basePath.includes('/games/'));
+    const plugins = pluginManager.getAllPlugins();
     return c.json(
       plugins.map((p) => ({
         id: p.manifest.id,

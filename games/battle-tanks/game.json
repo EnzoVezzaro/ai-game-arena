@@ -1,0 +1,12 @@
+{
+  "id": "battle-tanks",
+  "name": "Battle Tanks",
+  "description": "Grid-based tank battle game rules",
+  "version": "1.0.0",
+  "category": "game",
+  "engines": { "aga": "^0.1.0" },
+  "entry": "./dist/index.js",
+  "activation": { "startup": false },
+  "dependencies": {},
+  "permissions": []
+}

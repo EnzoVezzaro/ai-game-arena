@@ -10,7 +10,7 @@
 
 ```
 my-controller/
-├── arena-plugin.json
+├── plugin.json
 ├── package.json
 ├── tsconfig.json
 ├── src/

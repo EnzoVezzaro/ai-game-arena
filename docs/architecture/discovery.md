@@ -20,7 +20,7 @@ The discovery system is the **foundation** of the platform's extensibility. It e
 
 | Principle | Implementation |
 |-----------|----------------|
-| **Convention over configuration** | Manifest at known path (`arena-plugin.json`) |
+| **Convention over configuration** | Manifest at known path (`game.json` for games, `plugin.json` for plugins, `arena.json` for arenas) |
 | **Fail fast** | Validate all manifests before loading any code |
 | **Dependency order** | Topological sort before activation |
 | **Isolation** | Discovery never executes artifact code |
@@ -34,21 +34,21 @@ The discovery system is the **foundation** of the platform's extensibility. It e
 /
 ├── arenas/                 # Arena manifests
 │   ├── battle-tanks/
-│   │   ├── arena-plugin.json
+│   │   ├── arena.json
 │   │   └── dist/
 │   └── chess-arena/
-│       ├── arena-plugin.json
+│       ├── arena.json
 │       └── dist/
-├── games/                  # Game manifests (also arenas)
+├── games/                  # Game manifests
 │   ├── battle-tanks/
-│   │   ├── arena-plugin.json  # Game + Arena in one
+│   │   ├── game.json          # Game manifest
 │   │   └── dist/
 │   └── chess/
-│       ├── arena-plugin.json
+│       ├── game.json
 │       └── dist/
 ├── plugins/                # Plugin manifests
 │   ├── plugin-chat/
-│   │   ├── arena-plugin.json
+│   │   ├── plugin.json
 │   │   └── dist/
 │   ├── plugin-polls/
 │   └── plugin-rewards/
@@ -58,7 +58,7 @@ The discovery system is the **foundation** of the platform's extensibility. It e
     └── runtime/
 ```
 
-**Key insight:** Games and Arenas share the same manifest format (`arena-plugin.json`). A game *is* an arena that includes a game adapter.
+**Key insight:** Games use `game.json`, arenas use `arena.json`, and plugins use `plugin.json`. All manifest formats share the same structure — the type field distinguishes them.
 
 ---
 
@@ -68,7 +68,7 @@ The discovery system is the **foundation** of the platform's extensibility. It e
 // packages/plugin-manager/src/discovery.ts
 export interface DiscoveryConfig {
   readonly roots: string[];
-  readonly manifestName: string; // 'arena-plugin.json'
+  readonly manifestName: string | string[]; // 'game.json' for games, 'plugin.json' for plugins, 'arena.json' for arenas
   readonly ignorePatterns: string[];
   readonly followSymlinks: boolean;
 }
@@ -472,7 +472,7 @@ async function detectChanges(changedPaths: string[]): Promise<ChangedArtifacts> 
 
   for (const p of changedPaths) {
     if (await fileExists(p)) {
-      if (p.endsWith('arena-plugin.json')) {
+      if (p.endsWith('plugin.json') || p.endsWith('arena.json') || p.endsWith('game.json')) {
         artifacts.manifests.push(p);
       } else {
         artifacts.code.push(p);
@@ -516,7 +516,7 @@ export async function discoverRemotePackages(
         results.push({
           root: `remote:${source.name}`,
           path: pkg.path,
-          manifestPath: `${source.url}/${pkg.path}/arena-plugin.json`,
+          manifestPath: `${source.url}/${pkg.path}/plugin.json`, // or arena.json for arenas, game.json for games
           manifest: validated.data,
           relativePath: pkg.path,
           remote: true,
@@ -567,15 +567,15 @@ export async function discoverRemotePackages(
 describe('Discovery', () => {
   it('discovers manifests in nested directories', async () => {
     const fixtures = createFixtureStructure({
-      'arenas/tank/arena-plugin.json': validArenaManifest,
+      'arenas/tank/arena.json': validArenaManifest,
       'arenas/tank/dist/index.js': 'export default {}',
-      'plugins/chat/arena-plugin.json': validPluginManifest,
-      'games/chess/arena-plugin.json': validGameManifest,
+      'plugins/chat/plugin.json': validPluginManifest,
+      'games/chess/game.json': validGameManifest,
     });
 
     const results = await discoverManifests({
       roots: [fixtures.root],
-      manifestName: 'arena-plugin.json',
+      manifestName: ['game.json', 'plugin.json', 'arena.json'], // scan for all
       ignorePatterns: ['node_modules', 'dist', '*.test.ts'],
       followSymlinks: false,
     });
@@ -588,7 +588,7 @@ describe('Discovery', () => {
 
   it('rejects invalid manifests', async () => {
     const fixtures = createFixtureStructure({
-      'bad/arena-plugin.json': { id: 'bad' }, // missing version, name
+      'bad/plugin.json': { id: 'bad' }, // missing version, name
     });
 
     const results = await discoverManifests({ roots: [fixtures.root], ... });

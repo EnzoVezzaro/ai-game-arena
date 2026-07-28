@@ -369,7 +369,7 @@ The plugin system is the backbone of extensibility. Everything outside the core 
 
 ### Plugin Manifest
 
-Every plugin has an `arena-plugin.json` manifest at its root:
+Every plugin has a `plugin.json` manifest at its root:
 
 ```json
 {
@@ -500,7 +500,7 @@ export const PluginManifestSchema = z.object({
 Discovery → Validation → Dependency Resolution → Registration → Activation → Runtime → Deactivation → Cleanup
 ```
 
-1. **Discovery** — Scan `plugins/` and `games/` directories for `arena-plugin.json` manifests.
+1. **Discovery** — Scan `plugins/` directories for `plugin.json`, `arenas/` directories for `arena.json`, and `games/` directories for `game.json` manifests.
 2. **Validation** — Zod schema validation of all manifests. Reject invalid plugins early.
 3. **Dependency Resolution** — Topological sort based on declared dependencies. Detect cycles.
 4. **Registration** — Register contributions (tools, event handlers, UI panels, routes) without executing plugin code.
@@ -544,19 +544,19 @@ export interface PluginContext {
 ```
 plugins/
   plugin-chat/
-    arena-plugin.json        ← Manifest
+    plugin.json        ← Manifest
     package.json             ← NPM package
     dist/index.js            ← Entry point (compiled)
   plugin-polls/
-    arena-plugin.json
+    plugin.json
     ...
 games/
   battle-tanks/
-    arena-plugin.json
+    game.json
     package.json
     dist/index.js
   chess/
-    arena-plugin.json
+    game.json
     ...
 ```
 
@@ -899,7 +899,7 @@ A Game must **never** implement:
 ```
 games/
   battle-tanks/
-    arena-plugin.json       # Arena manifest
+    arena.json       # Arena manifest
     package.json
     src/
       index.ts              # Export default BattleTanksArena
@@ -1589,7 +1589,7 @@ Every component has its own manifest. The manifest hierarchy:
 }
 ```
 
-### arena-plugin.json (Arena)
+### arena.json (Arena)
 
 Defines the Arena layout, panels, UI, plugins, permissions, and presentation.
 

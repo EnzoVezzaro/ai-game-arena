@@ -29,7 +29,7 @@ export async function runCommand(rawArgs: string[]) {
 
   // Plugin manager
   const pluginManager = new PluginManager({
-    pluginDirs: ['./plugins', '../games'],
+    pluginDirs: ['./plugins', '../games', '../arenas'],
     logger,
     eventBus,
     storage,

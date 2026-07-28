@@ -28,7 +28,7 @@ Generates:
 
 ```
 my-arena/
-├── arena-plugin.json
+├── arena.json
 ├── package.json
 ├── tsconfig.json
 ├── src/
@@ -211,7 +211,7 @@ import {
 } from '@aga/sdk';
 
 export class MyGameAdapter implements GameAdapter {
-  readonly manifest = require('../arena-plugin.json');
+  readonly manifest = require('../game.json');
   private process: GameProcess | null = null;
 
   async initialize(config: GameConfig): Promise<void> {
@@ -318,7 +318,7 @@ export const handlers: EventHandler[] = [
 ];
 
 export class MyPlugin implements Plugin {
-  readonly manifest = require('../arena-plugin.json');
+  readonly manifest = require('../plugin.json');
 
   async activate(ctx: PluginContext): Promise<void> {
     // Register tools
@@ -561,7 +561,7 @@ The `.zip` uploaded from the web UI must contain a manifest at one of:
 
 ```
 my-artifact.zip
-├── arena-plugin.json         # plugin or arena manifest (preferred)
+├── plugin.json or arena.json # plugins or arenas; games use game.json
 └── ...                       # dist/, src/, package.json, etc.
 ```
 
@@ -570,7 +570,7 @@ or a single top-level subdirectory:
 ```
 my-artifact.zip
 └── my-artifact/
-    ├── arena-plugin.json
+    ├── plugin.json or arena.json     # or game.json for games
     └── ...
 ```
 
@@ -637,7 +637,7 @@ plugin-manager's `discover()` will see it on the next load cycle.
 
 ## Checklist
 
-- [ ] Valid `arena-plugin.json` manifest
+- [ ] Valid `game.json` (games), `plugin.json` (plugins), or `arena.json` (arenas) manifest
 - [ ] All required interface methods implemented
 - [ ] TypeScript compiles without errors
 - [ ] Unit tests pass

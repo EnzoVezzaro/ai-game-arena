@@ -289,6 +289,20 @@ export const INSTALL_STATUS: Record<string, { label: string; color: string; icon
 };
 
 export const PACKAGE_TYPES: Record<string, { label: string; color: string; icon: string }> = {
+  'agent-runtime': { label: 'Agent Runtime', color: '#38bdf8', icon: 'Bot' },
+  cli: { label: 'CLI', color: '#fbbf24', icon: 'Terminal' },
+  controller: { label: 'Controller', color: '#a78bfa', icon: 'Gamepad2' },
+  core: { label: 'Core', color: '#38bdf8', icon: 'Cpu' },
+  'match-engine': { label: 'Match Engine', color: '#fb7185', icon: 'Swords' },
+  mcp: { label: 'MCP', color: '#a78bfa', icon: 'CircuitBoard' },
+  observation: { label: 'Observation', color: '#a78bfa', icon: 'Eye' },
+  'plugin-manager': { label: 'Plugin Manager', color: '#a78bfa', icon: 'Puzzle' },
+  'games-manager': { label: 'Games Manager', color: '#38bdf8', icon: 'Gamepad2' },
+  'packages-manager': { label: 'Packages Manager', color: '#34d399', icon: 'Box' },
+  'arenas-manager': { label: 'Arenas Manager', color: '#fbbf24', icon: 'Swords' },
+  runtime: { label: 'Runtime', color: '#38bdf8', icon: 'Activity' },
+  sdk: { label: 'SDK', color: '#34d399', icon: 'Code2' },
+  storage: { label: 'Storage', color: '#34d399', icon: 'Box' },
   game: { label: 'Game', color: '#38bdf8', icon: 'Gamepad2' },
   plugin: { label: 'Plugin', color: '#a78bfa', icon: 'Puzzle' },
   arena: { label: 'Arena', color: '#fbbf24', icon: 'Swords' },

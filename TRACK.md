@@ -83,7 +83,7 @@
 | Static file serving | ✅ Done |
 | LLM provider wiring (OpenAI, Ollama, Mock) | ✅ Done |
 | Provider factory | ✅ Done |
-| Plugin manifest schema (arena-plugin.json) | ✅ Done |
+| Plugin manifest schema (`game.json` for games, `plugin.json` for plugins) | ✅ Done |
 | Topological dependency resolution | ✅ Done |
 | Cycle detection in plugin loading | ✅ Done |
 

@@ -1,0 +1,17 @@
+{
+  "name": "@ai-game-arena/arenas-manager",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "bun x tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-game-arena/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

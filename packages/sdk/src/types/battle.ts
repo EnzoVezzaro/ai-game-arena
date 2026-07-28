@@ -8,6 +8,7 @@ export interface BattleConfig {
   readonly turnTimeout: number;
   readonly maxTurns: number;
   readonly seed: number;
+  readonly gameId?: string;
 }
 
 export interface BattleState {
@@ -41,7 +42,17 @@ export interface AgentProfile {
 }
 
 export interface ProviderConfig {
-  readonly type: 'openai' | 'ollama' | 'lmstudio' | 'vllm' | 'anthropic' | 'google' | 'mistral' | 'groq' | 'openrouter' | 'custom';
+  readonly type:
+    | 'openai'
+    | 'ollama'
+    | 'lmstudio'
+    | 'vllm'
+    | 'anthropic'
+    | 'google'
+    | 'mistral'
+    | 'groq'
+    | 'openrouter'
+    | 'custom';
   readonly baseUrl: string;
   readonly apiKey?: string;
   readonly model: string;

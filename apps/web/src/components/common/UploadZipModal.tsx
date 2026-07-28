@@ -17,9 +17,9 @@ const TARGET_LABEL: Record<ArtifactType, string> = {
 };
 
 const TARGET_HINT: Record<ArtifactType, string> = {
-  plugin: 'A zip whose root or single subdirectory contains arena-plugin.json',
-  game: 'A zip whose root or single subdirectory contains game.json (or arena-plugin.json)',
-  arena: 'A zip whose root or single subdirectory contains arena-plugin.json',
+  plugin: 'A zip whose root or single subdirectory contains plugin.json',
+  game: 'A zip whose root or single subdirectory contains game.json',
+  arena: 'A zip whose root or single subdirectory contains arena.json',
 };
 
 export function UploadZipModal({ open, onClose, target, onUpload }: UploadZipModalProps) {
@@ -130,8 +130,8 @@ export function UploadZipModal({ open, onClose, target, onUpload }: UploadZipMod
         />
       </div>
       <p className="text-[10px] text-muted-foreground font-mono leading-relaxed">
-        The zip must contain an <code>arena-plugin.json</code> (or <code>game.json</code>) at its
-        root, or inside a single top-level subdirectory.
+        The zip must contain a <code>plugin.json</code>, <code>game.json</code>, or
+        <code>arena.json</code> at its root, or inside a single top-level subdirectory.
       </p>
     </Modal>
   );

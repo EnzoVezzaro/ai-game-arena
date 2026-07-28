@@ -329,7 +329,7 @@ export class NativeObservationAdapter implements ObservationAdapter {
 ## Game Manifest
 
 ```json
-// games/my-game/arena-plugin.json
+// games/my-game/game.json
 {
   "id": "my-game",
   "name": "My Game",
@@ -377,7 +377,7 @@ export class NativeObservationAdapter implements ObservationAdapter {
 ```
 games/
   my-game/
-    arena-plugin.json          # Manifest
+    game.json          # Manifest
     package.json               # NPM package
     tsconfig.json
     src/

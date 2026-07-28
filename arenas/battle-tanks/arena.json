@@ -1,5 +1,5 @@
 {
-  "id": "battle-tanks",
+  "id": "battle-tanks-arena",
   "name": "Battle Tanks",
   "description": "Grid-based tank battle arena for 2-4 AI agents",
   "version": "1.0.0",
@@ -17,27 +17,9 @@
       "defaultStrategies": ["aggressive", "defensive", "scout"],
       "mandatoryCapabilities": ["move"],
       "ui": [
-        {
-          "id": "battlefield",
-          "type": "panel",
-          "component": "GridRenderer",
-          "label": "Battlefield",
-          "position": "center"
-        },
-        {
-          "id": "event-log",
-          "type": "event-log",
-          "component": "EventLog",
-          "label": "Event Log",
-          "position": "right"
-        },
-        {
-          "id": "chat",
-          "type": "chat",
-          "component": "SpectatorChat",
-          "label": "Spectator Chat",
-          "position": "right"
-        }
+        { "id": "battlefield", "type": "panel", "component": "GridRenderer", "label": "Battlefield", "position": "center" },
+        { "id": "event-log", "type": "event-log", "component": "EventLog", "label": "Event Log", "position": "right" },
+        { "id": "chat", "type": "chat", "component": "SpectatorChat", "label": "Spectator Chat", "position": "right" }
       ]
     }
   },

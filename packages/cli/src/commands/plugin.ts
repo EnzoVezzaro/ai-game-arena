@@ -26,7 +26,7 @@ async function listPlugins() {
   const storage = new SqliteStorage(':memory:');
 
   const pluginManager = new PluginManager({
-    pluginDirs: ['./plugins', '../games', '../plugins'],
+    pluginDirs: ['./plugins', '../games', '../plugins', '../arenas'],
     logger,
     eventBus,
     storage,
@@ -120,7 +120,7 @@ export async function activate(ctx: PluginContext): Promise<void> {
 export async function deactivate(): Promise<void> {}
 `;
 
-  await writeFile(join(dir, 'arena-plugin.json'), JSON.stringify(manifest, null, 2));
+  await writeFile(join(dir, 'plugin.json'), JSON.stringify(manifest, null, 2));
   await writeFile(join(dir, 'package.json'), JSON.stringify(pkgJson, null, 2));
   await writeFile(join(dir, 'tsconfig.json'), JSON.stringify(tsconfig, null, 2));
   await writeFile(join(dir, 'src', 'index.ts'), entry);

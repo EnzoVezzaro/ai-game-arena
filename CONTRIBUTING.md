@@ -37,7 +37,7 @@ bun run build
 ### Creating a Plugin
 
 1. Create a new directory in `plugins/`
-2. Add `arena-plugin.json` manifest
+2. Add `plugin.json` manifest (for plugins) or `game.json` (for games)
 3. Implement `activate()` and `deactivate()` exports
 4. Register MCP tools, event handlers, and UI panels
 

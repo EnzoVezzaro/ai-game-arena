@@ -5,6 +5,9 @@ import { PluginManager } from '@ai-game-arena/plugin-manager';
 import { Runtime } from '@ai-game-arena/runtime';
 import { SqliteStorage } from '@ai-game-arena/storage';
 import { parseArgs } from '../utils/args';
+import { GamesManager } from '@ai-game-arena/games-manager';
+import { PackagesManager } from '@ai-game-arena/packages-manager';
+import { ArenasManager } from '@ai-game-arena/arenas-manager';
 
 export async function serveCommand(rawArgs: string[]) {
   const args = parseArgs(rawArgs);
@@ -23,10 +26,15 @@ export async function serveCommand(rawArgs: string[]) {
   const eventBus = new InProcessEventBus();
   const storage = new SqliteStorage(`${dataDir}/arena.db`);
 
-  // Plugin manager
+  // Entity managers
   const projectRoot = new URL('../../..', import.meta.url).pathname;
+  const gamesManager = new GamesManager(projectRoot);
+  const packagesManager = new PackagesManager(projectRoot);
+  const arenasManager = new ArenasManager(projectRoot, logger);
+
+  // Plugin manager — only plugins/
   const pluginManager = new PluginManager({
-    pluginDirs: [`${projectRoot}/plugins`, `${projectRoot}/games`],
+    pluginDirs: [`${projectRoot}/plugins`],
     logger,
     eventBus,
     storage,
@@ -35,12 +43,18 @@ export async function serveCommand(rawArgs: string[]) {
   // Runtime
   const runtime = new Runtime({ logger, eventBus, storage });
 
-  // Load plugins
+  // Load plugins + arenas independently
   try {
     await pluginManager.loadAll();
     logger.info('Plugins loaded', { component: 'server' });
+
+    const arenas = await arenasManager.loadAll();
+    for (const arena of arenas) {
+      runtime.registerArena(arena.arenaId, arena.instance);
+      logger.info(`Registered arena "${arena.arenaId}"`, { component: 'server' });
+    }
   } catch (error) {
-    logger.warn('No plugins found', { component: 'server' }, error as Error);
+    logger.warn('Failed to load plugins or arenas', { component: 'server' }, error as Error);
   }
 
   // Create Hono app
@@ -59,9 +73,30 @@ export async function serveCommand(rawArgs: string[]) {
         name: p.manifest.name,
         version: p.manifest.version,
         category: p.manifest.category,
+        description: p.manifest.description,
       })),
     );
   });
+
+  // Arenas
+  app.get('/api/arenas', (c) => {
+    const arenas = runtime.getArenas();
+    return c.json(
+      arenas.map((a) => ({
+        id: a.config.id,
+        name: a.config.name,
+        description: a.config.description,
+        minPlayers: a.config.minPlayers,
+        maxPlayers: a.config.maxPlayers,
+      })),
+    );
+  });
+
+  // Games
+  app.get('/api/games', async (c) => c.json(await gamesManager.list()));
+
+  // Packages
+  app.get('/api/packages', async (c) => c.json(await packagesManager.list()));
 
   // Battles
   app.get('/api/battles', (c) => {

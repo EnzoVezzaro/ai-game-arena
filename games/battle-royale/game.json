@@ -1,0 +1,12 @@
+{
+  "id": "battle-royale",
+  "name": "Battle Royale",
+  "description": "Large-grid survival game with shrinking safe zone",
+  "version": "1.0.0",
+  "category": "game",
+  "engines": { "aga": "^0.1.0" },
+  "entry": "./dist/index.js",
+  "activation": { "startup": false },
+  "dependencies": {},
+  "permissions": []
+}

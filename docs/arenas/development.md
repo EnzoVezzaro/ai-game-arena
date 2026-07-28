@@ -21,7 +21,7 @@ An **Arena** is an **environment container**. It defines:
 
 ```
 my-arena/
-├── arena-plugin.json          # Manifest
+├── arena.json          # Manifest
 ├── package.json               # NPM package
 ├── tsconfig.json              # TypeScript config
 ├── src/
@@ -47,7 +47,7 @@ my-arena/
 ## Step 1: Create Manifest
 
 ```json
-// arena-plugin.json
+// arena.json
 {
   "id": "my-arena",
   "name": "My Custom Arena",

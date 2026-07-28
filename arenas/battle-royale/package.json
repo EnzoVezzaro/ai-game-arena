@@ -1,0 +1,25 @@
+{
+  "name": "battle-royale-arena",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node && bun x tsc --emitDeclarationOnly",
+    "typecheck": "bun x tsc --noEmit"
+  },
+  "dependencies": {
+    "battle-royale": "workspace:*",
+    "@ai-game-arena/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

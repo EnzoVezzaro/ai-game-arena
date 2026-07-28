@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { GAME_FORMATS } from '../lib/arena';
 import { Icon } from '../lib/Icon';
 import { Chip } from '../components/common/Chip';
@@ -6,68 +6,67 @@ import { GameCard } from '../components/common/GameCard';
 import { ArtifactSection } from '../components/common/ArtifactSection';
 import type { Game } from '../components/common/GameBadge';
 
-const SEED_GAMES: Game[] = [
-  {
-    id: 'battle-tanks',
-    slug: 'battle-tanks',
-    name: 'Battle Tanks',
-    version: '1.0.0',
-    format: 'canvas',
-    icon: '🛡️',
-    adapter: 'canvas',
-    grid_size: 8,
-    min_players: 2,
-    max_players: 4,
-    description: 'Grid tactics — hunt, range, line-of-sight on an 8×8 field with HP and score.',
-    controller_schema: [
-      {
-        name: 'move',
-        type: 'action',
-        description: 'Move one cell in a direction',
-        mandatory: true,
-      },
-      { name: 'attack', type: 'action', description: 'Attack an adjacent enemy unit' },
-      { name: 'scan', type: 'observation', description: 'Reveal nearby cells and units' },
-      { name: 'pass', type: 'action', description: 'End the turn without acting' },
-    ],
-    mandatory_capabilities: ['move'],
-    install_status: 'installed',
-  },
-  {
-    id: 'chess',
-    slug: 'chess',
-    name: 'Championship Chess',
-    version: '1.0.0',
-    format: 'canvas',
-    icon: '♟️',
-    adapter: 'canvas',
-    grid_size: 8,
-    min_players: 2,
-    max_players: 2,
-    description: 'Classic 8×8 board. Long-horizon reasoning under time pressure.',
-    controller_schema: [
-      { name: 'move', type: 'action', description: 'Make a legal chess move', mandatory: true },
-      { name: 'castle', type: 'action', description: 'Castle kingside or queenside' },
-      { name: 'pass', type: 'action', description: 'Pass the turn' },
-    ],
-    mandatory_capabilities: ['move'],
-    install_status: 'installed',
-  },
-];
+interface ApiGame {
+  id: string;
+  name: string;
+  version: string;
+  description?: string;
+  category?: string;
+  format?: string;
+  adapterType?: string;
+  icon?: string;
+  min_players?: number;
+  max_players?: number;
+  grid_size?: number;
+  capabilities: string[];
+  mandatoryCapabilities: string[];
+  path: string;
+}
+
+const toGame = (g: ApiGame): Game => ({
+  id: g.id,
+  slug: g.path,
+  name: g.name,
+  version: g.version,
+  description: g.description,
+  format: g.format ?? g.adapterType ?? 'native',
+  adapter: g.adapterType ?? g.format ?? 'native',
+  icon: g.icon,
+  grid_size: g.grid_size,
+  min_players: g.min_players,
+  max_players: g.max_players,
+  mandatory_capabilities: g.mandatoryCapabilities,
+  controller_schema: g.capabilities.map((c, i) => ({
+    name: c,
+    type: 'action',
+    mandatory: i === 0,
+  })),
+  install_status: 'installed',
+});
 
 export function Games() {
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
   const [fmt, setFmt] = useState<string>('all');
 
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { all: SEED_GAMES.length };
-    for (const k of Object.keys(GAME_FORMATS))
-      c[k] = SEED_GAMES.filter((g) => (g.format || 'html') === k).length;
-    return c;
+  useEffect(() => {
+    fetch('/api/games')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: ApiGame[]) => setGames((list ?? []).map(toGame)))
+      .catch(() => setGames([]))
+      .finally(() => setLoading(false));
   }, []);
 
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: games.length };
+    for (const k of Object.keys(GAME_FORMATS))
+      c[k] = games.filter((g) => (g.format || 'html') === k).length;
+    return c;
+  }, [games]);
+
   const filtered = useMemo(
-    () => (fmt === 'all' ? SEED_GAMES : SEED_GAMES.filter((g) => (g.format || 'html') === fmt)),
-    [fmt],
+    () => (fmt === 'all' ? games : games.filter((g) => (g.format || 'html') === fmt)),
+    [games, fmt],
   );
 
   return (
@@ -104,11 +103,14 @@ export function Games() {
           <GameCard key={g.id} game={g} />
         ))}
       </div>
-      {filtered.length === 0 && (
+      {filtered.length === 0 && !loading && (
         <div className="text-center py-20 text-muted-foreground">
           <Icon name="Gamepad2" size={28} className="mx-auto mb-3 opacity-40" />
           <p className="text-sm">No games in this format yet. Upload a zip below to stage one.</p>
         </div>
+      )}
+      {loading && (
+        <div className="text-center py-20 text-muted-foreground text-sm">Loading games…</div>
       )}
 
       <ArtifactSection

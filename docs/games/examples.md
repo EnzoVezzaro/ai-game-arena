@@ -49,7 +49,7 @@
 ```typescript
 // games/chess/src/adapter.ts
 export class ChessAdapter implements GameAdapter {
-  readonly manifest = require('../arena-plugin.json');
+  readonly manifest = require('../game.json');
   private process: ChildProcess | null = null;
   private state: ChessState;
   private controller: ChessControllerAdapter;
@@ -340,7 +340,7 @@ int main(int argc, char* argv[]) {
 ```typescript
 // games/battle-tanks/src/adapter.ts
 export class BattleTanksAdapter implements GameAdapter {
-  readonly manifest = require('../arena-plugin.json');
+  readonly manifest = require('../game.json');
   private process: GameProcess | null = null;
   private controllerClient: WebSocketClient;
   private observationClient: WebSocketClient;
@@ -452,7 +452,7 @@ export class BattleTanksAdapter implements GameAdapter {
 ```typescript
 // games/space-shooter/src/adapter.ts
 export class SpaceShooterAdapter implements GameAdapter {
-  readonly manifest = require('../arena-plugin.json');
+  readonly manifest = require('../game.json');
   private browser: Browser | null = null;
   private page: Page | null = null;
   private cdp: CDPSession | null = null;
@@ -722,7 +722,7 @@ impl GameEngine {
 ```typescript
 // games/wasm-game/src/adapter.ts
 export class WasmGameAdapter implements GameAdapter {
-  readonly manifest = require('../arena-plugin.json');
+  readonly manifest = require('../game.json');
   private engine: any = null;
   private memory: WebAssembly.Memory | null = null;
 
@@ -844,7 +844,7 @@ message ActionResponse {
 ```typescript
 // games/remote-game/src/adapter.ts
 export class RemoteGameAdapter implements GameAdapter {
-  readonly manifest = require('../arena-plugin.json');
+  readonly manifest = require('../game.json');
   private client: GameServiceClient;
   private sessionId: string | null = null;
 

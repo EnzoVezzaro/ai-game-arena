@@ -12,7 +12,7 @@ AI Game Arena is a plugin-driven platform. Everything outside the small core run
 
 ## Plugin Manifest
 
-Every plugin has an `arena-plugin.json` manifest:
+Every plugin has a `plugin.json` manifest:
 
 ```json
 {
@@ -164,7 +164,7 @@ bun install
 bun run build
 ```
 
-This creates `arena-plugin.json`, `package.json`, `tsconfig.json`, and a starter `src/index.ts`.
+This creates `plugin.json`, `package.json`, `tsconfig.json`, and a starter `src/index.ts`.
 
 ---
 

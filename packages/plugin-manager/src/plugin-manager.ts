@@ -81,26 +81,41 @@ export class PluginManager {
           const entryStat = await stat(entryPath);
           if (!entryStat.isDirectory()) continue;
 
-          const manifestPath = join(entryPath, 'arena-plugin.json');
+          const manifestNames = ['plugin.json', 'game.json', 'arena.json'];
+          let manifestContent: string | null = null;
+          let manifestUsed = '';
+          for (const name of manifestNames) {
+            const mp = join(entryPath, name);
+            try {
+              manifestContent = await readFile(mp, 'utf-8');
+              manifestUsed = name;
+              break;
+            } catch {
+              // try next name
+            }
+          }
+          if (!manifestContent) continue;
+
           try {
-            const manifestContent = await readFile(manifestPath, 'utf-8');
             const raw = JSON.parse(manifestContent);
             const result = PluginManifestSchema.safeParse(raw);
 
             if (result.success) {
               results.push({ manifest: result.data, basePath: entryPath });
-              this.logger.info(`Discovered plugin: ${result.data.id}`, {
+              this.logger.info(`Discovered ${manifestUsed}: ${result.data.id}`, {
                 component: 'plugin-manager',
               });
             } else {
               this.logger.warn(
-                `Invalid manifest: ${manifestPath}`,
+                `Invalid manifest: ${join(entryPath, manifestUsed)}`,
                 { component: 'plugin-manager' },
                 result.error,
               );
             }
           } catch {
-            // No manifest file, skip
+            this.logger.warn(`Failed to parse manifest in ${entryPath}`, {
+              component: 'plugin-manager',
+            });
           }
         }
       } catch (error) {
