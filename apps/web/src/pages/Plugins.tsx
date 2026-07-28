@@ -1,47 +1,78 @@
+import { useMemo, useState } from 'react';
 import { useApi } from '../hooks/useApi';
-
-interface Plugin {
-  id: string;
-  name: string;
-  version: string;
-  category: string;
-  description?: string;
-  author?: string;
-}
+import { PLUGIN_CATEGORIES } from '../lib/arena';
+import { Icon } from '../lib/Icon';
+import { PageLoader } from '../components/common/PageLoader';
+import { PluginCard, type PluginDetailed } from '../components/common/PluginCard';
+import { Chip } from '../components/common/Chip';
+import { ArtifactSection } from '../components/common/ArtifactSection';
 
 export function Plugins() {
-  const { data: plugins, loading } = useApi<Plugin[]>('/api/plugins');
+  const { data: plugins, loading } = useApi<PluginDetailed[]>('/api/plugins');
+  const [cat, setCat] = useState<string>('all');
 
-  if (loading) return <div className="text-gray-400">Loading plugins...</div>;
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: plugins?.length ?? 0 };
+    for (const k of Object.keys(PLUGIN_CATEGORIES))
+      c[k] = plugins?.filter((p) => (p.category || 'arena') === k).length ?? 0;
+    return c;
+  }, [plugins]);
+
+  const filtered = useMemo(
+    () => (plugins || []).filter((p) => cat === 'all' || (p.category || 'arena') === cat),
+    [plugins, cat],
+  );
+
+  if (loading) return <PageLoader label="Loading plugins" />;
 
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-5">Plugins</h2>
-      {!plugins || plugins.length === 0 ? (
-        <p className="text-gray-400">No plugins loaded. Add plugins to the plugins directory.</p>
-      ) : (
-        <div className="grid grid-cols-fill-300 gap-5">
-          {plugins.map((plugin) => (
-            <div
-              key={plugin.id}
-              className="p-5 bg-[#1a1a2e] rounded-lg border border-[#2a2a4a]"
-            >
-              <div className="flex justify-between items-start">
-                <h3 className="m-0 font-semibold">{plugin.name}</h3>
-                <span className="px-2 py-0.5 rounded bg-[#2a2a4a] text-xs text-gray-400">
-                  {plugin.category}
-                </span>
-              </div>
-              <p className="text-gray-400 text-sm mt-2">
-                {plugin.description || 'No description'}
-              </p>
-              <div className="text-xs text-gray-500 mt-2">
-                v{plugin.version} {plugin.author && `by ${plugin.author}`}
-              </div>
-            </div>
-          ))}
+    <div className="px-4 lg:px-8 py-8 max-w-7xl mx-auto">
+      <div className="mb-6">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-primary mb-1">
+          / plugins · registry
+        </div>
+        <h1 className="font-display text-3xl font-bold tracking-tight">Plugin Registry</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Every feature is a plugin — arenas, interactions, exporters, agents, visualizations, and
+          metrics. Upload a zip below to stage a new one, then install, enable, and publish to the
+          marketplace.
+        </p>
+      </div>
+
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar mb-6">
+        <Chip label="All" count={counts.all} active={cat === 'all'} onClick={() => setCat('all')} />
+        {Object.entries(PLUGIN_CATEGORIES).map(([key, m]) => (
+          <Chip
+            key={key}
+            label={m.label}
+            icon={m.icon}
+            color={m.color}
+            count={counts[key]}
+            active={cat === key}
+            onClick={() => setCat(key)}
+          />
+        ))}
+      </div>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.map((p) => (
+          <PluginCard key={p.id} plugin={p} />
+        ))}
+      </div>
+      {filtered.length === 0 && (
+        <div className="text-center py-20 text-muted-foreground">
+          <Icon name="Puzzle" size={28} className="mx-auto mb-3 opacity-40" />
+          <p className="text-sm">No plugins in this category.</p>
         </div>
       )}
+
+      <ArtifactSection
+        type="plugin"
+        title="Uploaded Plugins"
+        description="Stage a new plugin from a .zip — then install, enable, remove, or publish to the marketplace."
+      />
     </div>
   );
 }
+
+export default Plugins;

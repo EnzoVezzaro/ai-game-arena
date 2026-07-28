@@ -12,7 +12,7 @@ export interface ArenaConfig {
 
 export interface ArenaPlugin {
   readonly config: ArenaConfig;
-  initialize(seed?: number): WorldState;
+  initialize(seed?: number, agentIds?: string[]): WorldState;
   getTools(): ToolDefinition[];
   validateAction(action: AgentAction, state: WorldState): ValidationResult;
   executeAction(action: AgentAction, state: WorldState): ActionOutcome;

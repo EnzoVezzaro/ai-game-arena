@@ -52,7 +52,7 @@ export class ChessArena implements IArenaPlugin {
     maxPlayers: 2,
   };
 
-  initialize(seed?: number): WorldState {
+  initialize(seed?: number, _agentIds?: string[]): WorldState {
     const board = this.createInitialBoard();
     const state: ChessState = {
       board,

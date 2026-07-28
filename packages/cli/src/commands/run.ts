@@ -45,10 +45,18 @@ export async function runCommand(rawArgs: string[]) {
   // Register arenas from plugins
   const plugins = pluginManager.getAllPlugins();
   for (const plugin of plugins) {
-    const module = plugin.module as { arena?: unknown };
-    if (module.arena) {
-      const arena = module.arena as { id: string };
-      runtime.registerArena(arena.id, module.arena as never);
+    const arenaIds = plugin.manifest.contributions.arenas ?? [];
+    if (arenaIds.length > 0) {
+      const arenaCandidate = plugin.module as
+        | { default?: unknown; arena?: unknown }
+        | undefined;
+      const arenaExport = arenaCandidate?.default ?? arenaCandidate?.arena ?? arenaCandidate;
+      if (arenaExport && typeof arenaExport === 'function') {
+        const arena = new (arenaExport as new () => import('@ai-game-arena/sdk').ArenaPlugin)();
+        for (const id of arenaIds) {
+          runtime.registerArena(id, arena);
+        }
+      }
     }
   }
 

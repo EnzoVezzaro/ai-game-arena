@@ -83,7 +83,7 @@ export function createBattleRoutes(container: Container) {
       return c.json({ error: 'Battle not found' }, 404);
     }
     const events = await storage.all<{ type: string; timestamp: number; payload: string; metadata: string }>(
-      'SELECT type, timestamp, payload, metadata FROM events WHERE aggregateId = ? ORDER BY timestamp',
+      'SELECT type, timestamp, payload, metadata FROM events WHERE aggregate_id = ? ORDER BY timestamp',
       [id],
     );
     return c.json({
@@ -106,7 +106,7 @@ export function createBattleRoutes(container: Container) {
       return c.json({ error: 'Battle not found' }, 404);
     }
     const events = await storage.all<{ type: string; timestamp: number; payload: string; metadata: string }>(
-      'SELECT type, timestamp, payload, metadata FROM events WHERE aggregateId = ? ORDER BY timestamp',
+      'SELECT type, timestamp, payload, metadata FROM events WHERE aggregate_id = ? ORDER BY timestamp',
       [id],
     );
     return c.json(events.map((e) => ({

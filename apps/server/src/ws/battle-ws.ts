@@ -22,8 +22,10 @@ export class BattleWebSocketServer {
 
   private setupEventForwarding(): void {
     const battleEventTypes = [
+      'BattleCreated',
       'BattleStarted',
       'BattleFinished',
+      'BattleAborted',
       'TurnStarted',
       'TurnFinished',
       'ActionExecuted',

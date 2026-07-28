@@ -41,11 +41,22 @@ export class BattleTanksArena implements IArenaPlugin {
   private readonly GRID_SIZE = 8;
   private readonly ATTACK_DAMAGE = 35;
 
-  initialize(seed?: number): WorldState {
+  initialize(seed?: number, agentIds: string[] = []): WorldState {
+    const positions = [
+      { x: 0, y: 0 },
+      { x: this.GRID_SIZE - 1, y: this.GRID_SIZE - 1 },
+      { x: 0, y: this.GRID_SIZE - 1 },
+      { x: this.GRID_SIZE - 1, y: 0 },
+    ];
     const state: BattleTanksState = {
       gridWidth: this.GRID_SIZE,
       gridHeight: this.GRID_SIZE,
-      tanks: {},
+      tanks: Object.fromEntries(
+        agentIds.map((agentId, index) => [
+          agentId,
+          { ...positions[index % positions.length]!, health: 100, alive: true },
+        ]),
+      ),
       turn: 0,
       phase: 'running',
       events: [],
@@ -153,6 +164,7 @@ export class BattleTanksArena implements IArenaPlugin {
         return { success: false, events, error: 'Tank not found or destroyed' };
       }
 
+      const from = { x: tank.x, y: tank.y };
       const newPos = this.calculateNewPosition(tank.x, tank.y, direction, battleState);
       tank.x = newPos.x;
       tank.y = newPos.y;
@@ -160,7 +172,7 @@ export class BattleTanksArena implements IArenaPlugin {
       events.push({
         type: 'TANK_MOVED',
         timestamp: Date.now(),
-        data: { agentId: action.agentId, from: { x: tank.x, y: tank.y }, to: newPos, direction },
+        data: { agentId: action.agentId, from, to: newPos, direction },
       });
     }
 

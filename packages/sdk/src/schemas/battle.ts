@@ -11,7 +11,7 @@ export const BattleConfigSchema = z.object({
 });
 
 export const ProviderConfigSchema = z.object({
-  type: z.enum(['openai', 'ollama', 'lmstudio', 'vllm', 'custom']),
+  type: z.enum(['openai', 'ollama', 'lmstudio', 'vllm', 'anthropic', 'google', 'mistral', 'groq', 'openrouter', 'custom']),
   baseUrl: z.string().url(),
   apiKey: z.string().optional(),
   model: z.string().min(1),

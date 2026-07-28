@@ -56,6 +56,26 @@ export class SqliteStorage implements StorageAdapter {
         data TEXT NOT NULL,
         created_at INTEGER NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS artifacts (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        slug TEXT NOT NULL,
+        name TEXT NOT NULL,
+        version TEXT NOT NULL,
+        manifest TEXT NOT NULL,
+        status TEXT NOT NULL,
+        path TEXT NOT NULL,
+        description TEXT,
+        published_at INTEGER,
+        published_by TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_artifacts_type ON artifacts(type);
+      CREATE INDEX IF NOT EXISTS idx_artifacts_status ON artifacts(status);
+      CREATE INDEX IF NOT EXISTS idx_artifacts_slug ON artifacts(slug);
     `);
   }
 

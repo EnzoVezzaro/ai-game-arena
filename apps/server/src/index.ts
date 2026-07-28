@@ -16,6 +16,9 @@ import { createAgentRoutes } from './routes/agents';
 import { createPluginRoutes } from './routes/plugins';
 import { createArenasRoutes } from './routes/arenas';
 import { createProfilesRoutes } from './routes/profiles';
+import { createModelsRoutes } from './routes/models';
+import { createPackagesRoutes } from './routes/packages';
+import { createArtifactRoutes } from './routes/artifacts';
 import { BattleWebSocketServer } from './ws/battle-ws';
 
 const projectRoot = new URL('../../..', import.meta.url).pathname;
@@ -43,16 +46,21 @@ export async function createServer(config: ServerConfig) {
   });
 
   // C.5: Global error handler (consistent error response shape)
-  app.onError((err, c) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  app.onError((err: any, c) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const correlationId = (c as any).get('correlationId') as string | undefined;
+    const status = err?.status ?? (err instanceof TypeError ? 400 : 500);
     return c.json(
       {
-        error: err.message,
-        code: err instanceof TypeError ? 'bad_request' : 'internal_error',
+        error: {
+          code: err?.code ?? (err instanceof TypeError ? 'bad_request' : 'internal_error'),
+          message: err.message,
+          details: err?.details,
+        },
         correlationId,
       },
-      500,
+      status as any,
     );
   });
 
@@ -66,17 +74,13 @@ export async function createServer(config: ServerConfig) {
   const storage = new SqliteStorage(`${config.dataDir}/arena.db`);
   container.register('storage', storage);
 
-
   // WebSocket server
   const wsServer = new BattleWebSocketServer(eventBus);
   container.register('wsServer', wsServer);
 
   // Plugin manager
   const pluginManager = new PluginManager({
-    pluginDirs: [
-      `${projectRoot}/plugins`,
-      `${projectRoot}/games`,
-    ],
+    pluginDirs: [`${projectRoot}/plugins`, `${projectRoot}/games`],
     logger: log,
     eventBus,
     storage,
@@ -95,6 +99,26 @@ export async function createServer(config: ServerConfig) {
   try {
     await pluginManager.loadAll();
     log.info('Plugins loaded', { component: 'server' });
+
+    // Register discovered arenas with runtime
+    for (const plugin of pluginManager.getAllPlugins()) {
+      const arenaIds = plugin.manifest.contributions.arenas ?? [];
+      if (arenaIds.length > 0) {
+        const arenaInstance = plugin.module as { default?: unknown } | undefined;
+        const arenaCandidate = arenaInstance?.default ?? arenaInstance;
+        if (arenaCandidate && typeof arenaCandidate === 'function') {
+          const arena = new (
+            arenaCandidate as new () => import('@ai-game-arena/sdk').ArenaPlugin
+          )();
+          for (const arenaId of arenaIds) {
+            runtime.registerArena(arenaId, arena);
+            log.info(`Registered arena "${arenaId}" from plugin "${plugin.manifest.id}"`, {
+              component: 'server',
+            });
+          }
+        }
+      }
+    }
 
     // Apply plugin-contributed middleware
     const middlewares = pluginManager.getRegisteredServerMiddlewares();
@@ -180,6 +204,20 @@ export async function createServer(config: ServerConfig) {
   app.route('/api/v1/plugins', createPluginRoutes(container));
   app.route('/api/v1/arenas', createArenasRoutes(container));
   app.route('/api/v1/profiles', createProfilesRoutes(container));
+  app.route('/api/v1/models', createModelsRoutes());
+  app.route('/api/v1/packages', createPackagesRoutes(projectRoot));
+  app.route('/api/v1/artifacts', createArtifactRoutes(container, projectRoot));
+
+  // Unversioned aliases for frontend compatibility
+  app.route('/api', createApiRoutes(container));
+  app.route('/api/battles', createBattleRoutes(container));
+  app.route('/api/agents', createAgentRoutes(container));
+  app.route('/api/plugins', createPluginRoutes(container));
+  app.route('/api/arenas', createArenasRoutes(container));
+  app.route('/api/profiles', createProfilesRoutes(container));
+  app.route('/api/models', createModelsRoutes());
+  app.route('/api/packages', createPackagesRoutes(projectRoot));
+  app.route('/api/artifacts', createArtifactRoutes(container, projectRoot));
 
   // C.2: Deep health check (server uptime, db, plugin system)
   app.get('/health', async (c) => {

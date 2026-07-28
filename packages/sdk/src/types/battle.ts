@@ -41,7 +41,7 @@ export interface AgentProfile {
 }
 
 export interface ProviderConfig {
-  readonly type: 'openai' | 'ollama' | 'lmstudio' | 'vllm' | 'custom';
+  readonly type: 'openai' | 'ollama' | 'lmstudio' | 'vllm' | 'anthropic' | 'google' | 'mistral' | 'groq' | 'openrouter' | 'custom';
   readonly baseUrl: string;
   readonly apiKey?: string;
   readonly model: string;

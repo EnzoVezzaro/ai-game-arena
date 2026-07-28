@@ -49,6 +49,7 @@ export interface MatchResult {
 export interface MatchEngineOptions {
   logger: Logger;
   eventBus?: EventBus;
+  battleId?: string;
   visibility?: 'perfect' | 'filtered' | 'private';
   observationFilter?: (observation: Observation, agentId: string) => Observation;
   observationSystem?: ObservationSystem;
@@ -80,6 +81,7 @@ export class MatchEngine {
   private visibility: 'perfect' | 'filtered' | 'private';
   private observationFilter?: (observation: Observation, agentId: string) => Observation;
   private observationSystem?: ObservationSystem;
+  private battleId: string;
 
   constructor(
     arena: ArenaPlugin,
@@ -95,6 +97,7 @@ export class MatchEngine {
     this.visibility = options?.visibility ?? 'perfect';
     this.observationFilter = options?.observationFilter;
     this.observationSystem = options?.observationSystem;
+    this.battleId = options?.battleId ?? `match-${this.config.seed}`;
     this.state = {
       phase: 'waiting',
       currentTurn: 0,
@@ -112,7 +115,10 @@ export class MatchEngine {
     this.startTime = Date.now();
 
     // Initialize world
-    this.state.worldState = this.arena.initialize(this.config.seed);
+    this.state.worldState = this.arena.initialize(
+      this.config.seed,
+      this.agents.map((agent) => agent.id),
+    );
 
     // Initialize scores
     for (const agent of this.agents) {
@@ -125,6 +131,23 @@ export class MatchEngine {
         id: `controller-${agent.id}`,
         name: `Controller for ${agent.name}`,
       });
+      for (const tool of this.arena.getTools()) {
+        controller.registerTool(
+          tool.name,
+          tool.description,
+          Object.fromEntries(
+            tool.parameters.map((parameter) => [
+              parameter.name,
+              {
+                type: parameter.type,
+                description: parameter.description,
+                required: parameter.required,
+              },
+            ]),
+          ),
+          async () => ({ content: [{ type: 'text', text: `${tool.name} submitted` }] }),
+        );
+      }
       const runtime = new AgentRuntime({
         logger: this.logger.child({ component: 'agent-runtime', agentId: agent.id }),
       });
@@ -150,10 +173,10 @@ export class MatchEngine {
     // Publish BattleStarted event
     await this.publishEvent({
       type: 'BattleStarted',
-      aggregateId: `match-${this.config.seed}`,
+      aggregateId: this.battleId,
       timestamp: new Date(),
       payload: {},
-      metadata: { correlationId: `match-${this.config.seed}`, version: 1 },
+      metadata: { correlationId: this.battleId, version: 1 },
     });
 
     this.logger.info('Match started', {
@@ -192,10 +215,10 @@ export class MatchEngine {
 
         await this.publishEvent({
           type: 'WinConditionMet',
-          aggregateId: `match-${this.config.seed}`,
+          aggregateId: this.battleId,
           timestamp: new Date(),
           payload: { winner: winCondition.winner, reason: winCondition.reason },
-          metadata: { correlationId: `match-${this.config.seed}`, version: 1 },
+          metadata: { correlationId: this.battleId, version: 1 },
         });
 
         this.finish(winCondition.winner, winCondition.reason);
@@ -211,10 +234,10 @@ export class MatchEngine {
       // Publish TurnStarted
       await this.publishEvent({
         type: 'TurnStarted',
-        aggregateId: `match-${this.config.seed}`,
+        aggregateId: this.battleId,
         timestamp: new Date(),
         payload: { turnNumber: this.state.currentTurn },
-        metadata: { correlationId: `match-${this.config.seed}`, version: 1 },
+        metadata: { correlationId: this.battleId, version: 1 },
       });
 
       const turnStart = Date.now();
@@ -245,10 +268,10 @@ export class MatchEngine {
         // 3. Publish ObservationCaptured (for UI, not for other agents)
         await this.publishEvent({
           type: 'ObservationCaptured',
-          aggregateId: `match-${this.config.seed}`,
+          aggregateId: this.battleId,
           timestamp: new Date(),
           payload: { agentId: agent.id, observationType: rawObservation.type },
-          metadata: { correlationId: `match-${this.config.seed}`, version: 1 },
+          metadata: { correlationId: this.battleId, version: 1 },
         });
 
         // 4. Agent decides action (inside its private sandbox)
@@ -278,10 +301,10 @@ export class MatchEngine {
           // 9. Publish ActionExecuted
           await this.publishEvent({
             type: 'ActionExecuted',
-            aggregateId: `match-${this.config.seed}`,
+            aggregateId: this.battleId,
             timestamp: new Date(),
             payload: { agentId: agent.id, action: action as unknown as Record<string, unknown>, success: true },
-            metadata: { correlationId: `match-${this.config.seed}`, version: 1 },
+            metadata: { correlationId: this.battleId, version: 1 },
           });
         } else {
           outcome = {
@@ -293,10 +316,10 @@ export class MatchEngine {
           // Publish ActionRejected
           await this.publishEvent({
             type: 'ActionRejected',
-            aggregateId: `match-${this.config.seed}`,
+            aggregateId: this.battleId,
             timestamp: new Date(),
             payload: { agentId: agent.id, action: action as unknown as Record<string, unknown>, reason: validation.error ?? 'Invalid action' },
-            metadata: { correlationId: `match-${this.config.seed}`, version: 1 },
+            metadata: { correlationId: this.battleId, version: 1 },
           });
         }
 
@@ -316,10 +339,10 @@ export class MatchEngine {
       // Publish TurnFinished
       await this.publishEvent({
         type: 'TurnFinished',
-        aggregateId: `match-${this.config.seed}`,
+        aggregateId: this.battleId,
         timestamp: new Date(),
         payload: { turnNumber: this.state.currentTurn, duration: Date.now() - turnStart },
-        metadata: { correlationId: `match-${this.config.seed}`, version: 1 },
+        metadata: { correlationId: this.battleId, version: 1 },
       });
 
       this.state.currentTurn++;

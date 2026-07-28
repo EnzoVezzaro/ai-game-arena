@@ -3,9 +3,9 @@ import type {
   AgentConfig,
   ArenaPlugin,
   BattleConfig,
+  DomainEvent,
   Logger,
   EventBus,
-  DomainEvent,
 } from '@ai-game-arena/sdk';
 import { MatchEngine } from '@ai-game-arena/match-engine';
 import type { MatchEngineConfig } from '@ai-game-arena/match-engine';
@@ -25,7 +25,12 @@ export interface BattleSession {
 }
 
 export type BattlePhase =
-  'created' | 'initializing' | 'running' | 'paused' | 'completed' | 'aborted';
+  | 'created'
+  | 'initializing'
+  | 'running'
+  | 'paused'
+  | 'completed'
+  | 'aborted';
 
 export interface BattleState {
   phase: BattlePhase;
@@ -43,13 +48,13 @@ export class Runtime {
   private battles = new Map<string, BattleSession>();
   private arenas = new Map<string, ArenaPlugin>();
   private logger: Logger;
-  private eventBus: EventBus;
   private storage: StorageAdapter;
+  private wrappedEventBus: EventBus;
 
   constructor(options: RuntimeOptions) {
     this.logger = options.logger;
-    this.eventBus = options.eventBus;
     this.storage = options.storage;
+    this.wrappedEventBus = this.wrapEventBusForPersistence(options.eventBus);
   }
 
   registerArena(id: string, arena: ArenaPlugin): void {
@@ -76,7 +81,7 @@ export class Runtime {
 
     this.logger.info(`Battle aborted: ${battleId}`, { component: 'runtime', battleId });
 
-    await this.eventBus.publish({
+    await this.wrappedEventBus.publish({
       type: 'BattleAborted',
       aggregateId: battleId,
       timestamp: new Date(),
@@ -129,7 +134,7 @@ export class Runtime {
     this.battles.set(battleId, session);
 
     // Emit event
-    await this.eventBus.publish({
+    await this.wrappedEventBus.publish({
       type: 'BattleCreated',
       aggregateId: battleId,
       timestamp: new Date(),
@@ -174,7 +179,8 @@ export class Runtime {
     const observationSystem = new ObservationSystem();
     session.matchEngine = new MatchEngine(arena, session.agents, matchConfig, {
       logger: this.logger,
-      eventBus: this.eventBus,
+      eventBus: this.wrappedEventBus,
+      battleId,
       observationSystem,
     });
 
@@ -194,6 +200,16 @@ export class Runtime {
       session.state.scores = matchState.scores;
 
       this.logger.info(`Battle completed: ${battleId}`, { component: 'runtime', battleId });
+      await this.wrappedEventBus.publish({
+        type: 'BattleFinished',
+        aggregateId: battleId,
+        timestamp: new Date(),
+        payload: {
+          winner: session.matchEngine.getMatchResult().winner,
+          reason: session.matchEngine.getMatchResult().reason ?? 'Match completed',
+        },
+        metadata: { correlationId: battleId, version: 1 },
+      } as DomainEvent);
     } catch (error) {
       session.state.phase = 'aborted';
       session.finishedAt = new Date();
@@ -237,6 +253,10 @@ export class Runtime {
     );
   }
 
+  getEventBus(): EventBus {
+    return this.wrappedEventBus;
+  }
+
   async shutdown(): Promise<void> {
     // Pause all active battles
     for (const battle of this.getActiveBattles()) {
@@ -252,5 +272,41 @@ export class Runtime {
     }
     this.battles.clear();
     this.arenas.clear();
+  }
+
+  private wrapEventBusForPersistence(eventBus: EventBus): EventBus {
+    const self = this;
+    return {
+      async publish(event) {
+        await self.persistEvent(event);
+        await eventBus.publish(event);
+      },
+      subscribe: eventBus.subscribe.bind(eventBus),
+      subscribeAll: eventBus.subscribeAll.bind(eventBus),
+      unsubscribe: eventBus.unsubscribe.bind(eventBus),
+    };
+  }
+
+  private async persistEvent(event: DomainEvent): Promise<void> {
+    try {
+      await this.storage.insert('events', {
+        id: randomUUID(),
+        type: event.type,
+        aggregate_id: event.aggregateId,
+        aggregate_type: 'battle',
+        timestamp: event.timestamp.getTime(),
+        version: event.metadata.version,
+        payload: JSON.stringify(event.payload),
+        metadata: JSON.stringify(event.metadata),
+        correlation_id: event.metadata.correlationId,
+        causation_id: event.metadata.causationId ?? null,
+      });
+    } catch (error) {
+      this.logger.error(
+        'Failed to persist event',
+        { component: 'runtime' },
+        error as Error,
+      );
+    }
   }
 }

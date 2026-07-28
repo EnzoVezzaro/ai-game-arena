@@ -1,0 +1,39 @@
+{
+  "id": "battle-royale",
+  "name": "Battle Royale",
+  "description": "Large-grid survival arena with a shrinking safe zone (2-8 AI agents)",
+  "version": "1.0.0",
+  "category": "arena",
+  "engines": { "aga": "^0.1.0" },
+  "entry": "./dist/index.js",
+  "activation": { "startup": true },
+  "contributions": {
+    "arenas": ["battle-royale"]
+  },
+  "display": {
+    "arena": {
+      "plugins": ["plugin-chat"],
+      "game": "battle-royale",
+      "defaultStrategies": ["aggressive", "defensive", "scout"],
+      "mandatoryCapabilities": ["move"],
+      "ui": [
+        {
+          "id": "arena-grid",
+          "type": "panel",
+          "component": "GridRenderer",
+          "label": "Arena",
+          "position": "center"
+        },
+        {
+          "id": "event-log",
+          "type": "event-log",
+          "component": "EventLog",
+          "label": "Event Log",
+          "position": "right"
+        }
+      ]
+    }
+  },
+  "dependencies": {},
+  "permissions": []
+}

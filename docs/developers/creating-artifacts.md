@@ -25,6 +25,7 @@ aga create arena my-arena
 ```
 
 Generates:
+
 ```
 my-arena/
 ├── arena-plugin.json
@@ -64,7 +65,13 @@ my-arena/
       "defaultStrategies": ["aggressive", "defensive"],
       "mandatoryCapabilities": ["move"],
       "ui": [
-        { "id": "world", "type": "panel", "component": "WorldView", "label": "World", "position": "center" }
+        {
+          "id": "world",
+          "type": "panel",
+          "component": "WorldView",
+          "label": "World",
+          "position": "center"
+        }
       ]
     }
   }
@@ -75,7 +82,16 @@ my-arena/
 
 ```typescript
 // src/arena.ts
-import { ArenaPlugin, WorldState, AgentAction, ValidationResult, ActionOutcome, Observation, WinCondition, RenderState } from '@aga/sdk';
+import {
+  ArenaPlugin,
+  WorldState,
+  AgentAction,
+  ValidationResult,
+  ActionOutcome,
+  Observation,
+  WinCondition,
+  RenderState,
+} from '@aga/sdk';
 
 export class MyArena implements ArenaPlugin {
   readonly config = {
@@ -100,8 +116,8 @@ export class MyArena implements ArenaPlugin {
 
   getTools(): ToolDefinition[] {
     return [
-      { name: 'move', description: 'Move entity', inputSchema: { /* ... */ } },
-      { name: 'attack', description: 'Attack target', inputSchema: { /* ... */ } },
+      { name: 'move', description: 'Move entity', inputSchema: {/* ... */} },
+      { name: 'attack', description: 'Attack target', inputSchema: {/* ... */} },
     ];
   }
 
@@ -116,14 +132,16 @@ export class MyArena implements ArenaPlugin {
   }
 
   getObservation(agentId: string, state: WorldState): Observation {
-    return { type: 'board-state', data: { /* agent-specific view */ } };
+    return { type: 'board-state', data: {/* agent-specific view */} };
   }
 
   checkWinCondition(state: WorldState): WinCondition | null {
     return null; // or { type: 'victory', winner: 'agent-1' }
   }
 
-  getScores(state: WorldState): Record<string, number> { return {}; }
+  getScores(state: WorldState): Record<string, number> {
+    return {};
+  }
 
   getRenderState(state: WorldState): RenderState {
     return { entities: [], tick: state.tick };
@@ -184,7 +202,13 @@ aga create game my-game
 
 ```typescript
 // src/adapter.ts
-import { GameAdapter, GameConfig, GameProcess, ControllerAdapter, ObservationAdapter } from '@aga/sdk';
+import {
+  GameAdapter,
+  GameConfig,
+  GameProcess,
+  ControllerAdapter,
+  ObservationAdapter,
+} from '@aga/sdk';
 
 export class MyGameAdapter implements GameAdapter {
   readonly manifest = require('../arena-plugin.json');
@@ -208,14 +232,28 @@ export class MyGameAdapter implements GameAdapter {
     // Connect adapter to game's observation port
   }
 
-  async start(): Promise<void> { /* Send start signal */ }
-  async stop(): Promise<void> { /* Graceful shutdown */ }
-  async suspend(): Promise<void> { /* Pause game */ }
-  async resume(): Promise<void> { /* Resume game */ }
-  async dispose(): Promise<void> { await this.stop(); }
+  async start(): Promise<void> {
+    /* Send start signal */
+  }
+  async stop(): Promise<void> {
+    /* Graceful shutdown */
+  }
+  async suspend(): Promise<void> {
+    /* Pause game */
+  }
+  async resume(): Promise<void> {
+    /* Resume game */
+  }
+  async dispose(): Promise<void> {
+    await this.stop();
+  }
 
-  getMetadata(): GameMetadata { return { name: 'My Game', type: 'turn-based' }; }
-  getCapabilities(): GameCapability[] { return ['move', 'attack']; }
+  getMetadata(): GameMetadata {
+    return { name: 'My Game', type: 'turn-based' };
+  }
+  getCapabilities(): GameCapability[] {
+    return ['move', 'attack'];
+  }
 }
 
 export default new MyGameAdapter();
@@ -246,7 +284,15 @@ aga create plugin my-plugin --category interaction
   "contributions": {
     "mcpTools": ["my.customTool"],
     "eventHandlers": ["BattleStarted"],
-    "uiPanels": [{ "id": "my-panel", "component": "MyPanel", "label": "My Panel", "position": "right", "type": "sidebar" }]
+    "uiPanels": [
+      {
+        "id": "my-panel",
+        "component": "MyPanel",
+        "label": "My Panel",
+        "position": "right",
+        "type": "sidebar"
+      }
+    ]
   },
   "permissions": ["system.events", "system.ui"]
 }
@@ -259,11 +305,16 @@ aga create plugin my-plugin --category interaction
 import { Plugin, PluginContext, McpTool, EventHandler } from '@aga/sdk';
 
 export const tools: McpTool[] = [
-  { name: 'my.customTool', description: 'Does something', inputSchema: { /* ... */ } }
+  { name: 'my.customTool', description: 'Does something', inputSchema: {/* ... */} },
 ];
 
 export const handlers: EventHandler[] = [
-  { eventType: 'BattleStarted', handler: async (event, ctx) => { /* ... */ } }
+  {
+    eventType: 'BattleStarted',
+    handler: async (event, ctx) => {
+      /* ... */
+    },
+  },
 ];
 
 export class MyPlugin implements Plugin {
@@ -291,8 +342,8 @@ export default new MyPlugin();
 import { PanelProps } from '@aga/web/runtime/layout';
 
 export function MyPanel({ panelId, battleId, onClose }: PanelProps) {
-  const data = usePluginStore(s => s.myPluginData);
-  
+  const data = usePluginStore((s) => s.myPluginData);
+
   return (
     <div className="p-4 h-full">
       <h2 className="text-lg font-semibold mb-4">My Panel</h2>
@@ -324,7 +375,7 @@ aga create controller my-controller
 import { Controller, InputDevice, ControllerAction, ActionResult, Capability } from '@aga/sdk';
 
 export class MyController implements Controller {
-  readonly manifest = { /* ... */ };
+  readonly manifest = {/* ... */};
   private devices = new Map<string, InputDevice>();
 
   async initialize(): Promise<void> {
@@ -345,7 +396,7 @@ export class MyController implements Controller {
   }
 
   getCapabilities(): Capability[] {
-    return Array.from(this.devices.values()).flatMap(d => d.getCapabilities());
+    return Array.from(this.devices.values()).flatMap((d) => d.getCapabilities());
   }
 }
 
@@ -369,7 +420,7 @@ aga create provider my-provider
 import { Provider, CompletionRequest, CompletionResponse, CompletionChunk } from '@aga/sdk';
 
 export class MyProvider implements Provider {
-  readonly manifest = { /* ... */ };
+  readonly manifest = {/* ... */};
 
   async authenticate(config: AuthConfig): Promise<AuthResult> {
     // Validate credentials
@@ -415,7 +466,7 @@ aga create observation my-observation
 import { ObservationAdapter, Observation, GameState } from '@aga/sdk';
 
 export class MyObservation implements ObservationAdapter {
-  readonly manifest = { /* ... */ };
+  readonly manifest = {/* ... */};
 
   capture(gameState: GameState, agentId: string): Observation {
     return {
@@ -423,7 +474,7 @@ export class MyObservation implements ObservationAdapter {
       agentId,
       type: 'board-state',
       data: this.extractRelevantState(gameState, agentId),
-      metadata: { captureDurationMs: 0, source: 'my-observation', version: '1.0.0' }
+      metadata: { captureDurationMs: 0, source: 'my-observation', version: '1.0.0' },
     };
   }
 
@@ -460,6 +511,127 @@ npm publish --access public
 # Users install
 aga plugin install @your-org/aga-plugin-my-plugin
 ```
+
+---
+
+## Artifact Lifecycle & Marketplace
+
+Every artifact (plugin, game, or arena) moves through a lifecycle that is managed
+from the web UI (Arenas / Games / Plugins pages) and persisted in the server's
+SQLite `artifacts` table. The runtime still discovers on-disk artifacts, but the
+staged upload + status + marketplace flags live in the registry.
+
+### Lifecycle states
+
+```
+                 upload (zip)
+                       │
+                       ▼
+                  ┌─────────┐
+        ┌────────▶│ uploaded│◀─────── uninstall ──────────┐
+        │         └────┬────┘                              │
+        │              │ install                           │
+        │              ▼                                   │
+        │         ┌──────────┐                        ┌────┴─────┐
+        │         │ installed│──enable ─────────────▶│ enabled  │
+        │         └──────────┘ ◀───────── disable ───└──────────┘
+        │                                                  │
+        │                                                  │ publish
+        │                                                  ▼
+        │                                            ┌──────────┐
+        └────────────── remove (delete) ─────────────│published │
+                                                     └──────────┘
+                              unpublish ──────────────────▶ installed/enabled
+```
+
+| Status      | Meaning                                                             |
+| ----------- | ------------------------------------------------------------------- |
+| `uploaded`  | Zip extracted on disk; not yet registered with the runtime.         |
+| `installed` | Registered (entry path known) but activation is off.                |
+| `enabled`   | Activated — the plugin-manager will call `activate()` on next load. |
+| `disabled`  | Explicitly paused after being enabled.                              |
+
+`published` is an orthogonal boolean flag — an artifact must be `installed` or
+`enabled` before it can be published to the marketplace. Unpublishing leaves the
+on-disk artifact intact and only clears the marketplace listing.
+
+### Zip layout
+
+The `.zip` uploaded from the web UI must contain a manifest at one of:
+
+```
+my-artifact.zip
+├── arena-plugin.json         # plugin or arena manifest (preferred)
+└── ...                       # dist/, src/, package.json, etc.
+```
+
+or a single top-level subdirectory:
+
+```
+my-artifact.zip
+└── my-artifact/
+    ├── arena-plugin.json
+    └── ...
+```
+
+For **games** the loader also accepts `game.json`. The manifest `id` (or the
+subdirectory name) becomes the artifact `slug` and must be lowercase letters,
+digits, and dashes.
+
+### HTTP API
+
+| Method   | Path                             | Body / Query                        | Effect                                             |
+| -------- | -------------------------------- | ----------------------------------- | -------------------------------------------------- |
+| `POST`   | `/api/artifacts/upload?type=...` | multipart `file` field              | Extracts zip, persists manifest, status=`uploaded` |
+| `GET`    | `/api/artifacts?type=...`        | optional `type=plugin\|game\|arena` | List staged artifacts                              |
+| `GET`    | `/api/artifacts/marketplace`     | —                                   | Published artifacts only                           |
+| `POST`   | `/api/artifacts/:id/install`     | —                                   | status → `installed`                               |
+| `POST`   | `/api/artifacts/:id/uninstall`   | —                                   | status → `uploaded`                                |
+| `POST`   | `/api/artifacts/:id/enable`      | —                                   | status → `enabled`                                 |
+| `POST`   | `/api/artifacts/:id/disable`     | —                                   | status → `disabled`                                |
+| `DELETE` | `/api/artifacts/:id`             | —                                   | Remove from disk + registry                        |
+| `POST`   | `/api/artifacts/:id/publish`     | header `x-user` (optional)          | `published_at` set; listed on marketplace          |
+| `POST`   | `/api/artifacts/:id/unpublish`   | —                                   | Cleared from marketplace                           |
+
+### Web UI
+
+- **Arenas / Games / Plugins** pages each have an "Uploaded {type}" section with an
+  **Upload zip** button. Each artifact card shows a status badge and contextual
+  action buttons: Install/Uninstall, Enable/Disable, Publish/Unpublish, Remove.
+- The **Marketplace** page (`/marketplace`) lists every published artifact with
+  type, slug, version, and publisher.
+- `packages/*` workspace packages are listed on the **Packages** page — these
+  are core platform modules (not lifecycle-managed via the registry).
+
+### Persistence
+
+State is stored in the SQLite `artifacts` table:
+
+```sql
+CREATE TABLE artifacts (
+  id           TEXT PRIMARY KEY,
+  type         TEXT NOT NULL,        -- plugin | game | arena
+  slug         TEXT NOT NULL,
+  name         TEXT NOT NULL,
+  version      TEXT NOT NULL,
+  manifest     TEXT NOT NULL,        -- serialized JSON manifest
+  status       TEXT NOT NULL,        -- uploaded | installed | enabled | disabled
+  path         TEXT NOT NULL,        -- on-disk dir under plugins/ | games/
+  description  TEXT,
+  published_at INTEGER,
+  published_by TEXT,
+  created_at   INTEGER NOT NULL,
+  updated_at   INTEGER NOT NULL
+);
+CREATE INDEX idx_artifacts_type   ON artifacts(type);
+CREATE INDEX idx_artifacts_status ON artifacts(status);
+CREATE INDEX idx_artifacts_slug   ON artifacts(slug);
+```
+
+Uploading extracts the zip into `.staging/artifacts/<uuid>/`, validates the
+manifest, then copies the artifact into the runtime discovery directory
+(`plugins/<slug>` or `games/<slug>`) and inserts the registry row. The
+plugin-manager's `discover()` will see it on the next load cycle.
 
 ---
 

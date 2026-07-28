@@ -7,11 +7,14 @@ export function createPluginRoutes(container: Container) {
 
   const pluginManager = container.resolve<PluginManager>('pluginManager');
 
-  // List all plugins with detailed info
+  // List all plugins with detailed info.
+  // Only artifacts discovered under plugins/ are exposed here; games/ are
+  // scanned by the same PluginManager (for arena registration) but surfaced
+  // via the Games page, not the Plugin Registry.
   app.get('/', (c) => {
-    const plugins = pluginManager.getAllPlugins();
     const serverRoutes = pluginManager.getRegisteredServerRoutes();
     const cliCommands = pluginManager.getRegisteredCliCommands();
+    const plugins = pluginManager.getAllPlugins().filter((p) => !p.basePath.includes('/games/'));
     return c.json(
       plugins.map((p) => ({
         id: p.manifest.id,

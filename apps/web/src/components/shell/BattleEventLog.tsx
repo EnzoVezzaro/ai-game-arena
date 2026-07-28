@@ -35,14 +35,21 @@ export function BattleEventLog({ battleId }: BattleEventLogProps) {
               <span className="text-gray-500">
                 {event.timestamp ? new Date(event.timestamp).toLocaleTimeString() : ''}
               </span>{' '}
-              <span className={
-                event.eventType === 'ActionExecuted' ? 'text-green-400' :
-                event.eventType === 'ActionRejected' ? 'text-red-400' :
-                event.eventType === 'TurnStarted' ? 'text-blue-400' :
-                event.eventType === 'TurnFinished' ? 'text-blue-300' :
-                event.eventType === 'WinConditionMet' ? 'text-yellow-400' :
-                'text-gray-300'
-              }>
+              <span
+                className={
+                  event.eventType === 'ActionExecuted'
+                    ? 'text-green-400'
+                    : event.eventType === 'ActionRejected'
+                      ? 'text-red-400'
+                      : event.eventType === 'TurnStarted'
+                        ? 'text-blue-400'
+                        : event.eventType === 'TurnFinished'
+                          ? 'text-blue-300'
+                          : event.eventType === 'WinConditionMet'
+                            ? 'text-yellow-400'
+                            : 'text-gray-300'
+                }
+              >
                 {event.eventType}
               </span>
               {event.payload != null && (

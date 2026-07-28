@@ -1,7 +1,13 @@
-import { readdir, readFile, stat } from 'fs/promises';
+import { readdir, readFile, stat, access } from 'fs/promises';
 import { join, resolve } from 'path';
 import { PluginManifestSchema } from '@ai-game-arena/sdk';
-import type { PluginManifest, PluginContext, Logger, EventBus } from '@ai-game-arena/sdk';
+import type {
+  PluginManifest,
+  PluginContext,
+  Logger,
+  EventBus,
+  Subscription,
+} from '@ai-game-arena/sdk';
 import type { StorageAdapter } from '@ai-game-arena/sdk';
 
 export interface PluginInstance {
@@ -9,6 +15,8 @@ export interface PluginInstance {
   context: PluginContext;
   module: unknown;
   activatedAt?: Date;
+  subscriptions: Subscription[];
+  basePath: string;
 }
 
 export interface PluginManagerOptions {
@@ -120,7 +128,21 @@ export class PluginManager {
       }
     }
 
-    const entryPath = join(basePath, manifest.entry);
+    const distEntryPath = join(basePath, manifest.entry);
+    const srcEntryPath = join(basePath, 'src', 'index.ts');
+    let entryPath = distEntryPath;
+    try {
+      await access(distEntryPath);
+    } catch {
+      try {
+        await access(srcEntryPath);
+        entryPath = srcEntryPath;
+      } catch {
+        throw new Error(
+          `Plugin "${manifest.id}" entry not found: tried ${distEntryPath} and ${srcEntryPath}`,
+        );
+      }
+    }
     const module = await import(entryPath);
 
     const context = this.createContext(manifest);
@@ -129,6 +151,8 @@ export class PluginManager {
       manifest,
       context,
       module: module.default ?? module,
+      subscriptions: [],
+      basePath,
     });
 
     this.logger.info(`Loaded plugin: ${manifest.id}`, { component: 'plugin-manager' });
@@ -171,6 +195,15 @@ export class PluginManager {
     if (deactivateFn) {
       await deactivateFn(plugin.context);
     }
+
+    for (const subscription of plugin.subscriptions) {
+      try {
+        subscription.unsubscribe();
+      } catch {
+        // already removed
+      }
+    }
+    plugin.subscriptions = [];
 
     plugin.activatedAt = undefined;
     this.logger.info(`Deactivated plugin: ${pluginId}`, { component: 'plugin-manager' });
@@ -253,11 +286,16 @@ export class PluginManager {
     }> = [];
 
     const registeredRoutes: Array<{ method: string; path: string; handler: unknown }> = [];
-    const registeredCliCommands: Array<{ name: string; description: string; handler: unknown }> = [];
+    const registeredCliCommands: Array<{ name: string; description: string; handler: unknown }> =
+      [];
     const registeredWidgets: Array<{ id: string; component: string; label: string }> = [];
     const registeredNavItems: Array<{ id: string; label: string; path: string }> = [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const registeredMiddlewares: Array<{ name: string; priority?: number; handle(context: any, next: () => Promise<void>): Promise<void> }> = [];
+    const registeredMiddlewares: Array<{
+      name: string;
+      priority?: number;
+      handle(context: any, next: () => Promise<void>): Promise<void>;
+    }> = [];
 
     const self = this;
 
@@ -290,16 +328,24 @@ export class PluginManager {
       },
       registerEventHandler(hook) {
         registeredHandlers.push(hook);
-        // Wire up to event bus
+        // Wire up to event bus and track subscriptions
         for (const eventType of hook.eventTypes) {
-          self.eventBus.subscribe(eventType as never, hook.handler as never);
+          const subscription = self.eventBus.subscribe(eventType as never, hook.handler as never);
+          const plugin = self.plugins.get(manifest.id);
+          if (plugin) {
+            plugin.subscriptions.push(subscription);
+          }
         }
       },
       registerUiPanel(panel) {
         registeredUiPanels.push(panel);
       },
       registerServerRoute(route) {
-        registeredRoutes.push({ method: String(route.method), path: route.path, handler: route.handler });
+        registeredRoutes.push({
+          method: String(route.method),
+          path: route.path,
+          handler: route.handler,
+        });
         self.serverRoutes.push({
           pluginId: manifest.id,
           method: route.method,
@@ -308,7 +354,11 @@ export class PluginManager {
         });
       },
       registerCliCommand(command) {
-        registeredCliCommands.push({ name: command.name, description: command.description, handler: command.handler });
+        registeredCliCommands.push({
+          name: command.name,
+          description: command.description,
+          handler: command.handler,
+        });
         self.cliCommands.push({
           pluginId: manifest.id,
           name: command.name,
@@ -342,20 +392,30 @@ export class PluginManager {
 
   private topologicalSort(manifests: PluginManifest[]): PluginManifest[] {
     const visited = new Set<string>();
+    const visiting = new Set<string>();
     const result: PluginManifest[] = [];
     const manifestMap = new Map(manifests.map((m) => [m.id, m]));
 
     const visit = (id: string) => {
       if (visited.has(id)) return;
-      visited.add(id);
+      if (visiting.has(id)) {
+        throw new Error(`Dependency cycle detected involving plugin "${id}"`);
+      }
+      visiting.add(id);
 
       const manifest = manifestMap.get(id);
-      if (!manifest) return;
+      if (!manifest) {
+        visiting.delete(id);
+        visited.add(id);
+        return;
+      }
 
       for (const depId of Object.keys(manifest.dependencies)) {
         visit(depId);
       }
 
+      visiting.delete(id);
+      visited.add(id);
       result.push(manifest);
     };
 

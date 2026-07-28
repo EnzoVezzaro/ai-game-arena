@@ -1,43 +1,80 @@
-import type { TurnResult } from '@ai-game-arena/match-engine';
+import { useEffect, useRef } from 'react';
+import { Icon } from '../../lib/Icon';
+import { eventMeta } from '../../lib/arena';
+
+export interface BattleEventItem {
+  type?: string;
+  eventType?: string;
+  turn?: number;
+  timestamp?: number | string;
+  summary?: string;
+  payload?: unknown;
+  aggregateId?: string;
+}
 
 interface EventLogProps {
-  turns: TurnResult[];
+  events: BattleEventItem[];
   className?: string;
 }
 
-export function EventLog({ turns, className }: EventLogProps) {
-  const recent = turns.slice(-50);
+export function EventLog({ events, className }: EventLogProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
+  }, [events]);
 
   return (
     <div className={`flex flex-col h-full ${className ?? ''}`}>
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[#2a2a4a]">
-        <span className="text-xs font-medium text-gray-400 uppercase">Event Stream</span>
-        <span className="font-mono text-xs text-gray-500">{recent.length} events</span>
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+        <Icon name="ListTree" size={13} className="text-primary" />
+        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          Event Stream
+        </span>
+        <span className="ml-auto font-mono text-[10px] text-muted-foreground">{events.length}</span>
       </div>
-      <div className="flex-1 overflow-auto font-mono text-xs">
-        {recent.length === 0 ? (
-          <div className="p-3 text-gray-500 text-center">Waiting for battle events…</div>
-        ) : (
-          recent.map((turn, i) => (
-            <div key={i} className="px-3 py-1.5 border-b border-[#2a2a4a]/30 hover:bg-[#2a2a4a]/20">
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500 text-[10px]">T{turn.turnNumber}</span>
-                <span className={`text-[10px] uppercase font-semibold ${
-                  turn.outcome.success ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {turn.action.type}
-                </span>
-                <span className="text-gray-400 text-[10px]">{turn.agentId}</span>
-              </div>
-              {turn.outcome.error && (
-                <div className="text-red-400/70 text-[10px] mt-0.5">{turn.outcome.error}</div>
-              )}
-              {!turn.outcome.success && !turn.outcome.error && (
-                <div className="text-gray-500 text-[10px] mt-0.5">rejected</div>
-              )}
-            </div>
-          ))
+      <div ref={ref} className="flex-1 overflow-y-auto scrollbar-thin p-2 space-y-1">
+        {events.length === 0 && (
+          <div className="text-center py-8 text-xs text-muted-foreground">
+            Awaiting match events…
+          </div>
         )}
+        {events.map((e, i) => {
+          const eventType = e.type || e.eventType || 'EVENT';
+          const meta = eventMeta(eventType);
+          const summary =
+            e.summary || (typeof e.payload === 'object' ? '' : String(e.payload ?? ''));
+          return (
+            <div
+              key={i}
+              className="flex items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-muted/40 animate-fade-in"
+            >
+              <Icon
+                name={meta.icon}
+                size={12}
+                className="mt-0.5 shrink-0"
+                style={{ color: meta.color }}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="font-mono text-[9px] uppercase tracking-wider"
+                    style={{ color: meta.color }}
+                  >
+                    {meta.label}
+                  </span>
+                  {e.turn != null && (
+                    <span className="font-mono text-[9px] text-muted-foreground">T{e.turn}</span>
+                  )}
+                </div>
+                {summary && (
+                  <div className="text-[11px] text-foreground/80 leading-snug break-words">
+                    {summary}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
