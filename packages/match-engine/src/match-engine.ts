@@ -12,6 +12,7 @@ import type {
 import { AgentSandbox } from './agent-sandbox';
 import type { AgentSandboxOptions } from './agent-sandbox';
 import { Controller } from '@ai-game-arena/controller';
+import type { GameAdapter } from '@ai-game-arena/controller';
 import { AgentRuntime } from '@ai-game-arena/agent-runtime';
 import { ObservationSystem } from '@ai-game-arena/observation';
 
@@ -53,6 +54,7 @@ export interface MatchEngineOptions {
   visibility?: 'perfect' | 'filtered' | 'private';
   observationFilter?: (observation: Observation, agentId: string) => Observation;
   observationSystem?: ObservationSystem;
+  adapterFactory?: (arenaId: string, agentId: string) => GameAdapter | null;
 }
 
 function createNoopLogger(): Logger {
@@ -68,6 +70,18 @@ function createNoopLogger(): Logger {
   return noopLogger;
 }
 
+export type ErrorCategory = 'auth' | 'billing' | 'rate-limit' | 'transient' | 'unknown';
+
+export function classifyError(message: string): ErrorCategory {
+  if (/401|unauthorized|invalid.*api.?key|auth|permission/i.test(message)) return 'auth';
+  if (/402|403|payment|billing|quota|credit|forbidden/i.test(message)) return 'billing';
+  if (/429|rate.?limit|too many requests/i.test(message)) return 'rate-limit';
+  if (/5\d{2}|internal.?server|service.?unavailable|timeout|temporarily/i.test(message)) return 'transient';
+  return 'unknown';
+}
+
+const NON_RECOVERABLE: Set<ErrorCategory> = new Set(['auth', 'billing', 'rate-limit']);
+
 export class MatchEngine {
   private config: MatchEngineConfig;
   private arena: ArenaPlugin;
@@ -82,6 +96,9 @@ export class MatchEngine {
   private observationFilter?: (observation: Observation, agentId: string) => Observation;
   private observationSystem?: ObservationSystem;
   private battleId: string;
+  private adapterFactory?: (arenaId: string, agentId: string) => GameAdapter | null;
+  private gameAdapters: Map<string, GameAdapter> = new Map();
+  private agentErrors: Map<string, { category: ErrorCategory; message: string; turn: number }> = new Map();
 
   constructor(
     arena: ArenaPlugin,
@@ -97,6 +114,7 @@ export class MatchEngine {
     this.visibility = options?.visibility ?? 'perfect';
     this.observationFilter = options?.observationFilter;
     this.observationSystem = options?.observationSystem;
+    this.adapterFactory = options?.adapterFactory;
     this.battleId = options?.battleId ?? `match-${this.config.seed}`;
     this.state = {
       phase: 'waiting',
@@ -131,23 +149,35 @@ export class MatchEngine {
         id: `controller-${agent.id}`,
         name: `Controller for ${agent.name}`,
       });
-      for (const tool of this.arena.getTools()) {
-        controller.registerTool(
-          tool.name,
-          tool.description,
-          Object.fromEntries(
-            tool.parameters.map((parameter) => [
-              parameter.name,
-              {
-                type: parameter.type,
-                description: parameter.description,
-                required: parameter.required,
-              },
-            ]),
-          ),
-          async () => ({ content: [{ type: 'text', text: `${tool.name} submitted` }] }),
-        );
+
+      // Create a game adapter if available, otherwise register arena tools as raw tools
+      const adapter = this.createAdapterForAgent(agent);
+      if (adapter) {
+        adapter.registerTools(controller);
+        this.gameAdapters.set(agent.id, adapter);
+      } else {
+        // Fallback: register arena tools as raw MCP tools (semantic action mode)
+        for (const tool of this.arena.getTools()) {
+          controller.registerTool(
+            tool.name,
+            tool.description,
+            Object.fromEntries(
+              tool.parameters.map((parameter) => [
+                parameter.name,
+                {
+                  type: parameter.type,
+                  description: parameter.description,
+                  required: parameter.required,
+                },
+              ]),
+            ),
+            async (_args) => ({
+              content: [{ type: 'text', text: `${tool.name} submitted` }],
+            }),
+          );
+        }
       }
+
       const runtime = new AgentRuntime({
         logger: this.logger.child({ component: 'agent-runtime', agentId: agent.id }),
       });
@@ -159,10 +189,26 @@ export class MatchEngine {
         visibility: this.visibility,
         filterFn: this.observationFilter,
         onAction: (action) => {
-          this.logger.debug(`Agent ${agent.name} performed action: ${action.device}.${action.action}`, {
-            component: 'match-engine',
-            agentId: agent.id,
-          });
+          // Forward device-level input to the adapter for translation
+          if (adapter) {
+            adapter.processInput(action);
+          }
+          this.logger.debug(
+            `Agent ${agent.name} performed action: ${action.device}.${action.action}`,
+            {
+              component: 'match-engine',
+              agentId: agent.id,
+            },
+          );
+          if (action.device === 'game' && action.action !== 'pass') {
+            this.publishEvent({
+              type: 'ToolCalled',
+              aggregateId: this.battleId,
+              timestamp: new Date(),
+              payload: { agentId: agent.id, tool: action.action, parameters: action.parameters },
+              metadata: { correlationId: this.battleId, version: 1 },
+            });
+          }
         },
       };
 
@@ -204,6 +250,11 @@ export class MatchEngine {
   abort(_reason: string): void {
     this.state.phase = 'aborted';
     this.state.worldState = null;
+  }
+
+  private createAdapterForAgent(agent: AgentConfig): GameAdapter | null {
+    if (!this.adapterFactory) return null;
+    return this.adapterFactory(this.arena.config.id, agent.id);
   }
 
   private async runMatchLoop(): Promise<void> {
@@ -249,6 +300,12 @@ export class MatchEngine {
         const agentStart = Date.now();
         const sandbox = this.sandboxes.get(agent.id)!;
 
+        // 0. Reset game adapter state for this turn
+        const adapter = this.gameAdapters.get(agent.id);
+        if (adapter && this.state.worldState) {
+          adapter.onTurnStart(agent.id, this.state.worldState);
+        }
+
         // 1. Get observation for this agent (filtered by arena)
         const rawObservation = this.arena.getObservation(agent.id, this.state.worldState!);
 
@@ -275,7 +332,82 @@ export class MatchEngine {
         });
 
         // 4. Agent decides action (inside its private sandbox)
-        const action = await sandbox.decide();
+        await this.publishEvent({
+          type: 'ThinkingStarted',
+          aggregateId: this.battleId,
+          timestamp: new Date(),
+          payload: { agentId: agent.id, turnNumber: this.state.currentTurn },
+          metadata: { correlationId: this.battleId, version: 1 },
+        });
+
+        let rawAction: import('@ai-game-arena/sdk').AgentAction;
+        try {
+          rawAction = await sandbox.decide();
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          this.logger.error(`Agent ${agent.name} decision error: ${errorMessage}`, {
+            component: 'match-engine',
+            agentId: agent.id,
+          });
+
+          const category = classifyError(errorMessage);
+          this.agentErrors.set(agent.id, { category, message: errorMessage, turn: this.state.currentTurn });
+
+          await this.publishEvent({
+            type: 'AgentError',
+            aggregateId: this.battleId,
+            timestamp: new Date(),
+            payload: { agentId: agent.id, turnNumber: this.state.currentTurn, error: errorMessage },
+            metadata: { correlationId: this.battleId, version: 1 },
+          });
+
+          if (NON_RECOVERABLE.has(category) && this.allAgentsHaveNonRecoverableErrors()) {
+            const errors = Array.from(this.agentErrors.entries()).map(([id, e]) => ({
+              agentId: id,
+              error: e.message,
+            }));
+            this.logger.warn(`All agents hit non-recoverable errors — pausing battle.`, {
+              component: 'match-engine',
+              battleId: this.battleId,
+              errors,
+            });
+            await this.publishEvent({
+              type: 'BattlePaused',
+              aggregateId: this.battleId,
+              timestamp: new Date(),
+              payload: { reason: `All agents blocked: ${this.describeErrors(errors)}`, errors },
+              metadata: { correlationId: this.battleId, version: 1 },
+            });
+            this.state.phase = 'paused';
+            return;
+          }
+
+          rawAction = {
+            agentId: agent.id,
+            type: 'pass',
+            parameters: {},
+            timestamp: Date.now(),
+          };
+        }
+
+        if (rawAction.type !== 'pass') {
+          this.logger.info(`Agent ${agent.name} decided: ${rawAction.type}(${JSON.stringify(rawAction.parameters)})`, {
+            component: 'match-engine',
+            agentId: agent.id,
+          });
+        }
+
+        await this.publishEvent({
+          type: 'ThinkingFinished',
+          aggregateId: this.battleId,
+          timestamp: new Date(),
+          payload: { agentId: agent.id, turnNumber: this.state.currentTurn, actionType: rawAction.type },
+          metadata: { correlationId: this.battleId, version: 1 },
+        });
+
+        // 4b. Check if the game adapter has a translated action (from device-level input)
+        const adapterAction = adapter?.extractAction() ?? null;
+        const action = adapterAction ?? rawAction;
 
         // 5. Validate action against world state
         const validation = this.arena.validateAction(action, this.state.worldState!);
@@ -347,6 +479,17 @@ export class MatchEngine {
 
       this.state.currentTurn++;
     }
+  }
+
+  private allAgentsHaveNonRecoverableErrors(): boolean {
+    return this.agents.every((a) => {
+      const err = this.agentErrors.get(a.id);
+      return err && NON_RECOVERABLE.has(err.category);
+    });
+  }
+
+  private describeErrors(errors: Array<{ agentId: string; error: string }>): string {
+    return errors.map((e) => `${e.agentId.slice(0, 8)}: ${e.error.split('"')[0]?.slice(0, 60) ?? e.error}`).join('; ');
   }
 
   private finish(_winner: string | undefined, _reason: string): void {

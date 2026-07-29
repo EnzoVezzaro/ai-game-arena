@@ -1,41 +1,31 @@
 # Arena Architecture
 
-> The Arena is the **environment**. It is not the game. The Arena hosts games, spectators, overlays, chat, inspectors, timelines, dashboards, plugins, and developer tools.
+> An **Arena is a self-contained environment where an AI battle takes place.** It is not a game. The Arena owns everything required for the battle: the game/environment, the agents, the audience, spectators, chat, events, overlays, telemetry, scoring, recordings, battle lifecycle, plugins, and any future interaction systems.
 
 ---
 
 ## Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        ARENA                                 │
-├─────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │   Game       │  │  Spectators  │  │  Plugins     │       │
-│  │  (Adapter)   │  │  (Chat, UI)  │  │  (Tools)     │       │
-│  └──────────────┘  └──────────────┘  └──────────────┘       │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │  Overlays    │  │  Inspectors  │  │  Dashboards  │       │
-│  │  (HUD, Map)  │  │  (State, AI) │  │  (Metrics)   │       │
-│  └──────────────┘  └──────────────┘  └──────────────┘       │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                            ARENA                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
+│  │   Game       │  │  Spectators  │  │  Plugins     │              │
+│  │  (Component) │  │  (Chat, UI)  │  │  (Tools)     │              │
+│  └──────────────┘  └──────────────┘  └──────────────┘              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
+│  │  Overlays    │  │  Inspectors  │  │  Dashboards  │              │
+│  │  (HUD, Map)  │  │  (State, AI) │  │  (Metrics)   │              │
+│  └──────────────┘  └──────────────┘  └──────────────┘              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
+│  │  Telemetry   │  │  Recordings  │  │  Battle      │              │
+│  │  & Events    │  │  & Replay    │  │  Lifecycle   │              │
+│  └──────────────┘  └──────────────┘  └──────────────┘              │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Key principle:** The Game occupies *one area* of the Arena. Different Arenas can host the same Game.
-
----
-
-## Arena Responsibilities
-
-| Responsibility | Description |
-|----------------|-------------|
-| **Environment Definition** | World layout, boundaries, zones, physics |
-| **UI Layout** | Panel positions, overlay regions, spectator views |
-| **Capability Requirements** | What agents *must* have to participate |
-| **Default Configuration** | Recommended strategies, plugins, game |
-| **Rendering** | World state → renderable format |
-| **Validation** | Action legality, win conditions, scoring |
-| **Observation** | What agents perceive (delegated to Observation system) |
+**Key principle:** The Game is just *one component* hosted inside the Arena. The Arena orchestrates the entire battle. Different Arenas can host the same Game.
 
 ---
 
@@ -43,12 +33,15 @@
 
 | Aspect | Arena | Game |
 |--------|-------|------|
-| **Role** | Environment container | Native application adapter |
-| **Knows about** | UI, spectators, plugins, overlays | Native input/output APIs |
-| **Implements** | World logic, rules, scoring | Process management, bridging |
+| **Role** | Battle environment & orchestrator | Native application adapter |
+| **Knows about** | UI, spectators, plugins, overlays, agents, chat, events, telemetry, scoring, recordings, lifecycle | Native input/output APIs only |
+| **Implements** | World logic, rules, scoring, battle orchestration, agent coordination | Process management, bridging to native game |
+| **Contains** | Game, Agents, Spectators, Plugins, Chat, Overlays, Events, Telemetry, Recordings, Battle Lifecycle | — |
 | **Multiple per** | Game | Arena |
 | **Example** | "Battle Tanks Arena" | "Battle Tanks Game" (native executable) |
-| **Example** | "Chess Arena" (3D board, chat, replay) | "Chess Game" (Stockfish, UCI protocol) |
+| **Example** | "Chess Arena" (3D board, chat, replay, coaching) | "Chess Game" (Stockfish, UCI protocol) |
+
+**Critical Design Principle:** There is **no architectural dependency between Arena and Game** beyond composition. The Arena **contains** a Game. The Game does **not** contain or manage an Arena. The Game should not know about any Arena systems.
 
 ---
 
@@ -237,9 +230,7 @@ See [Arena Manifests](manifests.md) for complete schema.
   "engines": { "aga": "^1.0.0" },
   "entry": "./dist/index.js",
   "activation": { "startup": true },
-  "contributions": {
-    "arenas": ["battle-tanks"]
-  },
+  "contributions": { "arenas": ["battle-tanks"] },
   "display": {
     "arena": {
       "game": "battle-tanks",
@@ -332,6 +323,8 @@ export type ArenaCategory =
 
 ## Arena Lifecycle
 
+The Arena owns the battle lifecycle:
+
 ```
 ┌─────────────┐
 │  Created    │ ← ArenaManager discovers manifest
@@ -345,14 +338,19 @@ export type ArenaCategory =
        ▼
 ┌─────────────┐
 │  Active     │ ← initialize(seed) called
-│             │ ← Game launched
-│             │ ← Agents connected
+│             │ ← Game launched by Arena
+│             │ ← Agents connected by Arena
+│             │ ← Plugins activated by Arena
+│             │ ← Spectators admitted by Arena
 └──────┬──────┘
-       │ battle runs
+       │ battle runs (Arena orchestrates)
        ▼
 ┌─────────────┐
 │  Shutdown   │ ← shutdown() called
-│             │ ← Game stopped
+│             │ ← Game stopped by Arena
+│             │ ← Agents disconnected by Arena
+│             │ ← Plugins deactivated by Arena
+│             │ ← Recordings finalized by Arena
 └──────┬──────┘
        │
        ▼

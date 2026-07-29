@@ -1,6 +1,6 @@
 # Arena Manifests
 
-> Complete manifest schema, UI contributions, and capability declarations.
+> Complete manifest schema, UI contributions, and capability declarations for Arenas.
 
 ---
 

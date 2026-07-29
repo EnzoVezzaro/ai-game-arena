@@ -21,7 +21,8 @@
     "@ai-game-arena/match-engine": "workspace:*",
     "@ai-game-arena/observation": "workspace:*",
     "@ai-game-arena/plugin-manager": "workspace:*",
-    "@ai-game-arena/storage": "workspace:*"
+    "@ai-game-arena/storage": "workspace:*",
+    "@ai-game-arena/controller": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

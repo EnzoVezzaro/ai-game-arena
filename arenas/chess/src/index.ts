@@ -70,8 +70,41 @@ export class ChessArena implements IArenaPlugin {
 
   getRenderState(state: WorldState): RenderState {
     const chessState = state.data as unknown as ChessState;
-    return { type: 'chess-board', data: { board: serializeBoard(chessState.board), currentTurn: chessState.currentTurn, moveHistory: chessState.moveHistory } };
+    const units: Array<{
+      agentId: string; x: number; y: number;
+      symbol: string; color: string; id: string; alive: boolean; hp: number;
+    }> = [];
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = chessState.board[row]?.[col];
+        if (piece) {
+          const agentId = piece.color === 'white' ? 'agent-1' : 'agent-2';
+          const prefix = piece.color === 'white' ? 'w' : 'b';
+          const symbol = prefix + piece.type.charAt(0).toUpperCase();
+          units.push({
+            agentId,
+            id: agentId + '-' + col + '-' + row,
+            x: col,
+            y: row,
+            symbol,
+            color: piece.color === 'white' ? '#ffffff' : '#1a1a1a',
+            alive: true,
+            hp: 100,
+          });
+        }
+      }
+    }
+    return {
+      type: 'grid',
+      data: {
+        grid_size: 8,
+        units,
+        currentTurn: chessState.currentTurn,
+        moveHistory: chessState.moveHistory,
+      },
+    };
   }
 }
 
+export { ChessHtmlAdapter } from './adapters/chess-html-adapter';
 export default ChessArena;

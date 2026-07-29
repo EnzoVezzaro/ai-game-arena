@@ -11,6 +11,7 @@ import { MatchEngine } from '@ai-game-arena/match-engine';
 import type { MatchEngineConfig } from '@ai-game-arena/match-engine';
 import { ObservationSystem } from '@ai-game-arena/observation';
 import type { StorageAdapter } from '@ai-game-arena/sdk';
+import type { GameAdapter } from '@ai-game-arena/controller';
 
 export interface BattleSession {
   id: string;
@@ -38,6 +39,7 @@ export interface RuntimeOptions {
   logger: Logger;
   eventBus: EventBus;
   storage: StorageAdapter;
+  adapterFactory?: (arenaId: string, agentId: string) => GameAdapter | null;
 }
 
 export class Runtime {
@@ -46,11 +48,13 @@ export class Runtime {
   private logger: Logger;
   private storage: StorageAdapter;
   private wrappedEventBus: EventBus;
+  private adapterFactory: NonNullable<RuntimeOptions['adapterFactory']>;
 
   constructor(options: RuntimeOptions) {
     this.logger = options.logger;
     this.storage = options.storage;
     this.wrappedEventBus = this.wrapEventBusForPersistence(options.eventBus);
+    this.adapterFactory = options.adapterFactory ?? (() => null);
   }
 
   registerArena(id: string, arena: ArenaPlugin): void {
@@ -185,6 +189,7 @@ export class Runtime {
       eventBus: this.wrappedEventBus,
       battleId,
       observationSystem,
+      adapterFactory: this.adapterFactory,
     });
 
     session.state.phase = 'running';
@@ -194,25 +199,30 @@ export class Runtime {
     // Start match engine (this runs the game loop)
     try {
       await session.matchEngine.start();
-      session.state.phase = 'completed';
-      session.finishedAt = new Date();
 
-      // Update final state from match engine
-      const matchState = session.matchEngine.getState();
-      session.state.currentTurn = matchState.currentTurn;
-      session.state.scores = matchState.scores;
-
-      this.logger.info(`Battle completed: ${battleId}`, { component: 'runtime', battleId });
-      await this.wrappedEventBus.publish({
-        type: 'BattleFinished',
-        aggregateId: battleId,
-        timestamp: new Date(),
-        payload: {
-          winner: session.matchEngine.getMatchResult().winner,
-          reason: session.matchEngine.getMatchResult().reason ?? 'Match completed',
-        },
-        metadata: { correlationId: battleId, version: 1 },
-      } as DomainEvent);
+      // Match engine may have paused itself (e.g. all agents hit non-recoverable errors)
+      const meState = session.matchEngine.getState();
+      session.state = {
+        phase: meState.phase as 'paused' | 'completed',
+        currentTurn: meState.currentTurn,
+        scores: meState.scores,
+      };
+      if (meState.phase === 'paused') {
+        this.logger.warn(`Battle paused: ${battleId}`, { component: 'runtime', battleId });
+      } else {
+        session.finishedAt = new Date();
+        this.logger.info(`Battle completed: ${battleId}`, { component: 'runtime', battleId });
+        await this.wrappedEventBus.publish({
+          type: 'BattleFinished',
+          aggregateId: battleId,
+          timestamp: new Date(),
+          payload: {
+            winner: session.matchEngine.getMatchResult().winner,
+            reason: session.matchEngine.getMatchResult().reason ?? 'Match completed',
+          },
+          metadata: { correlationId: battleId, version: 1 },
+        } as DomainEvent);
+      }
     } catch (error) {
       session.state.phase = 'aborted';
       session.finishedAt = new Date();
@@ -244,6 +254,16 @@ export class Runtime {
 
   getBattle(battleId: string): BattleSession | undefined {
     return this.battles.get(battleId);
+  }
+
+  getBattleRenderState(battleId: string): Record<string, unknown> | null {
+    const session = this.battles.get(battleId);
+    if (!session || !session.matchEngine) return null;
+    const meState = session.matchEngine.getState();
+    if (!meState.worldState) return null;
+    const arena = this.arenas.get(session.arenaId);
+    if (!arena) return null;
+    return arena.getRenderState(meState.worldState).data ?? null;
   }
 
   getAllBattles(): BattleSession[] {

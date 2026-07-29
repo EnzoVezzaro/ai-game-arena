@@ -224,7 +224,10 @@ export class Controller implements ControllerInterface {
       args: Record<string, unknown>,
     ) => Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }>,
   ): void {
-    this.mcpServer.registerTool(name, description, inputSchema, handler);
+    this.mcpServer.registerTool(name, description, inputSchema, async (args) => {
+      this.recordAction({ device: 'game', action: name, parameters: args, timestamp: Date.now() });
+      return handler(args);
+    });
   }
 
   onAction(callback: (action: InputAction) => void): void {

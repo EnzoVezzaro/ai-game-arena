@@ -21,7 +21,9 @@
     "@ai-game-arena/storage": "workspace:*",
     "@ai-game-arena/games-manager": "workspace:*",
     "@ai-game-arena/packages-manager": "workspace:*",
-    "@ai-game-arena/arenas-manager": "workspace:*"
+    "@ai-game-arena/arenas-manager": "workspace:*",
+    "@ai-game-arena/controller": "workspace:*",
+    "chess-arena": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest",

@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "chess": "workspace:*",
-    "@ai-game-arena/sdk": "workspace:*"
+    "@ai-game-arena/sdk": "workspace:*",
+    "@ai-game-arena/controller": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

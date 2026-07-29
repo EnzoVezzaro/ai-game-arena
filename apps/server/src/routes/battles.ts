@@ -18,7 +18,19 @@ export function createBattleRoutes(container: Container) {
       agents: AgentConfig[];
       config?: Partial<BattleConfig>;
     }>();
-    const battle = await runtime.createBattle(arenaId, agents, {
+    // Enrich agent configs from stored agent profiles (provider, apiKey, model, etc.)
+    const enriched = await Promise.all(
+      agents.map(async (a) => {
+        const stored = await storage.getOne<{ id: string; name: string; config: string }>(
+          'SELECT * FROM agents WHERE id = ?',
+          [a.id],
+        );
+        if (!stored) return a;
+        const full: AgentConfig = { ...JSON.parse(stored.config) as AgentConfig, id: a.id, name: stored.name };
+        return { ...full, strategy: a.strategy ?? full.strategy };
+      }),
+    );
+    const battle = await runtime.createBattle(arenaId, enriched, {
       ...config,
       gameId,
     });
@@ -41,6 +53,7 @@ export function createBattleRoutes(container: Container) {
     if (!battle) {
       return c.json({ error: 'Battle not found' }, 404);
     }
+    const renderState = runtime.getBattleRenderState(id);
     return c.json({
       id: battle.id,
       arenaId: battle.arenaId,
@@ -48,6 +61,7 @@ export function createBattleRoutes(container: Container) {
       agents: battle.agents,
       config: battle.config,
       state: battle.state,
+      renderState,
       createdAt: battle.createdAt,
       startedAt: battle.startedAt,
       finishedAt: battle.finishedAt,
@@ -57,7 +71,11 @@ export function createBattleRoutes(container: Container) {
   // Start a battle
   app.post('/:id/start', async (c) => {
     const id = c.req.param('id');
-    await runtime.startBattle(id);
+    setTimeout(() => {
+      runtime.startBattle(id).catch((err) =>
+        console.error(`[battle] start failed for ${id}:`, err),
+      );
+    }, 0);
     return c.json({ status: 'started' });
   });
 

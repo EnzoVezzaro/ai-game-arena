@@ -1,36 +1,39 @@
 # Battle Lifecycle
 
-> A Battle is the executable unit of the platform — isolated, reproducible, observable, recordable, and benchmarkable.
+> A Battle is the executable unit of the platform — isolated, reproducible, observable, recordable, and benchmarkable. Battles run **inside an Arena**.
 
 ---
 
 ## Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        BATTLE                                    │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────┐  ┌──────────┐  ┌────────────┐  ┌──────────────┐  │
-│  │  Arena   │  │   Game   │  │ Controllers│  │   Agents     │  │
-│  │(Environment)│ (Adapter) │  │ (MCP Server)│  │ (AI Minds)   │  │
-│  └────┬─────┘  └────┬─────┘  └─────┬──────┘  └──────┬───────┘  │
-│       │             │              │                │          │
-│       └─────────────┼──────────────┼────────────────┘          │
-│                     ▼              ▼                           │
-│            ┌──────────────────────────────┐                   │
-│            │      Battle Orchestrator     │                   │
-│            │  - Turn management           │                   │
-│            │  - Agent coordination        │                   │
-│            │  - Event emission            │                   │
-│            │  - Replay recording          │                   │
-│            └──────────────────────────────┘                   │
-│                     │                                        │
-│                     ▼                                        │
-│            ┌──────────────────┐                              │
-│            │  Observation     │                              │
-│            │  Pipeline        │                              │
-│            └──────────────────┘                              │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                            ARENA                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                        BATTLE                                  │   │
+│  ├─────────────────────────────────────────────────────────────┤   │
+│  │  ┌──────────┐  ┌──────────┐  ┌────────────┐  ┌────────────┐ │   │
+│  │  │  Arena   │  │   Game   │  │ Controllers│  │   Agents   │ │   │
+│  │  │(Environment)│ (Adapter) │  │ (MCP Server)│  │ (AI Minds) │ │   │
+│  │  └────┬─────┘  └────┬─────┘  └─────┬──────┘  └──────┬───────┘ │   │
+│  │       │             │              │                │          │   │
+│  │       └─────────────┼──────────────┼────────────────┘          │   │
+│  │                     ▼              ▼                           │   │
+│  │            ┌──────────────────────────────┐                   │   │
+│  │            │      Battle Orchestrator     │                   │   │
+│  │            │  - Turn management           │                   │   │
+│  │            │  - Agent coordination        │                   │   │
+│  │            │  - Event emission            │                   │   │
+│  │            │  - Replay recording          │                   │   │
+│  │            └──────────────────────────────┘                   │   │
+│  │                     │                                        │   │
+│  │                     ▼                                        │   │
+│  │            ┌──────────────────┐                              │   │
+│  │            │  Observation     │                              │   │
+│  │            │  Pipeline        │                              │   │
+│  │            └──────────────────┘                              │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -69,15 +72,7 @@
 }
 ```
 
-> **Note:** `maxTurns` and `turnTimeout` are intentionally omitted from the
-> request the frontend sends. The runtime defaults `maxTurns` to `Infinity`
-> and `turnTimeout` to `0` — battles run until the arena's win condition
-> fires, or until an admin pauses/resumes/aborts. The only latency bound is
-> the provider retry policy inside the agent runtime (the agent's LLM call is
-> retried a small number of times before the agent is treated as
-> non-functional and the battle aborts). `seed` is auto-generated server-side
-> for reproducible replays; clients may override it only for deterministic
-> test suites.
+> **Note:** `maxTurns` and `turnTimeout` are intentionally omitted from the request the frontend sends. The runtime defaults `maxTurns` to `Infinity` and `turnTimeout` to `0` — battles run until the arena's win condition fires, or until an admin pauses/resumes/aborts. The only latency bound is the provider retry policy inside the agent runtime (the agent's LLM call is retried a small number of times before the agent is treated as non-functional and the battle aborts). `seed` is auto-generated server-side for reproducible replays; clients may override it only for deterministic test suites.
 
 ---
 
@@ -89,14 +84,14 @@ Created → Initializing → Running → Paused → Completed / Aborted
 
 ### States
 
-| State            | Description                                                           | Valid Transitions                |
-| ---------------- | --------------------------------------------------------------------- | -------------------------------- |
-| **Created**      | Battle definition validated, components resolved                      | → Initializing                   |
-| **Initializing** | Arena initialized, game launched, agents connected, plugins activated | → Running, → Aborted             |
-| **Running**      | Match engine drives interaction loop                                  | → Paused, → Completed, → Aborted |
-| **Paused**       | Battle suspended (spectator interaction, admin action)                | → Running, → Aborted             |
-| **Completed**    | Win condition met or max turns reached                                | (terminal)                       |
-| **Aborted**      | Error, timeout, or manual termination                                 | (terminal)                       |
+| State | Description | Valid Transitions |
+|-------|-------------|-------------------|
+| **Created** | Battle definition validated, components resolved | → Initializing |
+| **Initializing** | Arena initialized, game launched, agents connected, plugins activated | → Running, → Aborted |
+| **Running** | Match engine drives interaction loop | → Paused, → Completed, → Aborted |
+| **Paused** | Battle suspended (spectator interaction, admin action) | → Running, → Aborted |
+| **Completed** | Win condition met or max turns reached | (terminal) |
+| **Aborted** | Error, timeout, or manual termination | (terminal) |
 
 ---
 
@@ -159,7 +154,7 @@ export class Battle extends EventSourcedAggregate<BattleId> {
   // Commands
   joinAgent(agent: AgentConfig): void {
     if (this.state.phase !== 'created') {
-      throw new BattleError('Cannot join after battle started');
+      throw new BattleError('Cannot join after battle has started');
     }
     if (this.agents.length >= this.state.config.maxAgents) {
       throw new BattleError('Battle is full');
@@ -518,8 +513,14 @@ export class DeterministicBattle {
   // No Math.random() - use this.rng
   // No Date.now() - use this.tick * (1000/TICK_RATE)
 
-  // Event ordering deterministic
-  // Same seed = same battle
+  // Deterministic physics
+  // Fixed-point or deterministic float math
+
+  // Ordered events
+  // Event queue processed in deterministic order
+
+  // No external entropy
+  // No Math.random(), no system RNG
 }
 
 export function verifyDeterminism(battleId: BattleId): DeterminismReport {

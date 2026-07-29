@@ -105,6 +105,7 @@ export type {
   BattleStarted,
   BattleFinished,
   BattleAborted,
+  BattlePaused,
   AgentJoinedBattle,
   AgentLeftBattle,
   TurnStarted,
@@ -121,6 +122,10 @@ export type {
   WinConditionMet,
   PluginActivated,
   PluginDeactivated,
+  ThinkingStarted,
+  ThinkingFinished,
+  ToolCalled,
+  AgentError,
 } from './events';
 
 // Infrastructure

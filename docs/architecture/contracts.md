@@ -92,7 +92,7 @@ export interface ArenaManifest {
   readonly display?: ArenaDisplayConfig;
 }
 
-export type ArenaCategory = 'competitive' | 'cooperative' | 'simulation' | 'sandbox' | 'educational';
+export type ArenaCategory = 'competitive' | 'cooperative' | 'sandbox' | 'training' | 'social' | 'experimental';
 
 export interface ArenaDisplayConfig {
   readonly arena: {
@@ -596,7 +596,7 @@ export const ArenaManifestSchema = z.object({
   description: z.string().max(1000),
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
   type: z.literal('arena'),
-  category: z.enum(['competitive', 'cooperative', 'simulation', 'sandbox', 'educational']),
+  category: z.enum(['competitive', 'cooperative', 'sandbox', 'training', 'social', 'experimental']),
   dependencies: z.record(z.string()).default({}),
   capabilities: z.array(z.string()).default([]),
   display: z.object({

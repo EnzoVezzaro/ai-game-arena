@@ -57,7 +57,8 @@ export class OpenAIProvider implements LLMProvider {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      const errorBody = await response.text().catch(() => '');
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}: ${errorBody}`);
     }
 
     const data = (await response.json()) as {
@@ -84,10 +85,25 @@ export class OpenAIProvider implements LLMProvider {
   async shutdown(): Promise<void> {}
 
   private inputSchemaToJSONSchema(schema: Record<string, unknown>): Record<string, unknown> {
-    if (schema && typeof schema === 'object' && schema.type) {
+    if (!schema || typeof schema !== 'object') {
+      return { type: 'object', properties: {} };
+    }
+    if (schema.type) {
       return schema as Record<string, unknown>;
     }
-    return { type: 'object', properties: {} };
+    const properties: Record<string, unknown> = {};
+    const required: string[] = [];
+    for (const [key, value] of Object.entries(schema)) {
+      const def = value as Record<string, unknown>;
+      properties[key] = {
+        type: (def.type as string) ?? 'string',
+        description: (def.description as string) ?? '',
+      };
+      if (def.required) {
+        required.push(key);
+      }
+    }
+    return { type: 'object', properties, ...(required.length > 0 ? { required } : {}) };
   }
 
   private buildSystemPrompt(agent: AgentConfig, tools: McpToolDefinition[]): string {

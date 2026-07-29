@@ -1,50 +1,59 @@
 # Controller Architecture
 
-> The Controller is **the AI's body**. It exposes virtual input devices through an MCP server and translates high-level actions into native platform input events.
+> The **Controller is the AI's body**. It exposes virtual input devices through an MCP server and translates high-level actions into native platform input events.
+
+The Controller runs **inside the Arena** and is orchestrated by the Arena during battle execution. The Game never knows whether input came from an AI, human, replay, or script — it only receives native input events.
 
 ---
 
 ## Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        AI AGENT                                  │
-│                         (Brain)                                  │
-└───────────────────────────┬─────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                        AI AGENT                                      │
+│                         (Brain)                                      │
+└───────────────────────────┬─────────────────────────────────────────┘
                             │ MCP Protocol
                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      CONTROLLER                                  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │   Keyboard  │  │    Mouse    │  │  Gamepad    │   Devices   │
-│  │  (virtual)  │  │  (virtual)  │  │  (virtual)  │             │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘             │
-│         │                │                │                     │
-│         └────────────────┼────────────────┘                     │
-│                          ▼                                     │
-│               ┌─────────────────────┐                           │
-│               │    MCP Server       │                           │
-│               │  (Tool Registry)    │                           │
-│               └──────────┬──────────┘                           │
-│                          │                                       │
-└──────────────────────────┼──────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                        CONTROLLER                                    │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                 │
+│  │   Keyboard  │  │    Mouse    │  │  Gamepad    │   Devices       │
+│  │  (virtual)  │  │  (virtual)  │  │  (virtual)  │                 │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘                 │
+│         │                │                │                         │
+│         └────────────────┼────────────────┘                         │
+│                          ▼                                           │
+│               ┌─────────────────────┐                               │
+│               │    MCP Server       │                               │
+│               │  (Tool Registry)    │                               │
+│               └──────────┬──────────┘                               │
+│                          │                                           │
+└──────────────────────────┼──────────────────────────────────────────┘
                            │ Platform Adapter
                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    NATIVE INPUT SYSTEM                           │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
-│  │ Desktop  │ │ Browser  │ │ Terminal │ │   WASM   │  Platforms │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                    NATIVE INPUT SYSTEM                               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐               │
+│  │ Desktop  │ │ Browser  │ │ Terminal │ │   WASM   │  Platforms    │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘               │
+└─────────────────────────────────────────────────────────────────────┘
                            │
                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       GAME / APPLICATION                          │
-│         (Receives native input, knows nothing about AI)         │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                       GAME / APPLICATION                             │
+│         (Receives native input, knows nothing about AI)             │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Key Principle:** The Game never knows whether input came from an AI, human, replay, or script. It only receives native input events.
+**Key Principle:** The Game never knows whether input originated from:
+- An AI agent
+- A human player
+- A replay
+- A scripted automation
+- A reinforcement learning policy
+
+It only receives native input events.
 
 ---
 
@@ -110,6 +119,8 @@ export type DeviceType =
 ---
 
 ## Virtual Input Devices
+
+Every Controller exposes one or more virtual devices:
 
 ### Keyboard
 
@@ -185,7 +196,11 @@ export interface PointerDevice extends InputDevice {
   up(pointerId: number): Promise<void>;
   cancel(pointerId: number): Promise<void>;
 }
+```
 
+### Touch
+
+```typescript
 export interface TouchDevice extends InputDevice {
   readonly type: 'touch';
   
@@ -278,8 +293,11 @@ export interface McpServer {
   handleRequest(request: McpRequest): Promise<McpResponse>;
   handleNotification(notification: McpNotification): Promise<void>;
 }
+```
 
-// Tool mapping for keyboard
+### Tool Mapping for Keyboard
+
+```typescript
 export const keyboardTools: McpTool[] = [
   {
     name: 'keyboard.press',
@@ -306,8 +324,11 @@ export const keyboardTools: McpTool[] = [
     },
   },
 ];
+```
 
-// Tool mapping for mouse
+### Tool Mapping for Mouse
+
+```typescript
 export const mouseTools: McpTool[] = [
   {
     name: 'mouse.move',

@@ -6,14 +6,15 @@
 
 ## Overview
 
-An **Arena** is an **environment container**. It defines:
+An **Arena** is a **self-contained battle environment**. It defines:
 
-1. **World logic** — Rules, physics, win conditions
+1. **World logic** — Rules, physics, win conditions, scoring
 2. **UI layout** — Panels, overlays, spectator experience
-3. **Capabilities** — What agents can do
+3. **Capabilities** — What agents can do (via MCP tools)
 4. **Default configuration** — Game, plugins, strategies
+5. **Battle orchestration** — The Arena owns the battle lifecycle
 
-**The Arena is not the Game.** The Game is a native application adapter. The Arena *hosts* the Game and adds the environment layer.
+**The Arena is not the Game.** The Game is a native application adapter. The Arena *hosts* the Game and adds the environment layer. The Game knows nothing about the Arena's systems (spectators, chat, plugins, overlays, telemetry, recordings, etc.).
 
 ---
 
@@ -22,24 +23,24 @@ An **Arena** is an **environment container**. It defines:
 ```
 my-arena/
 ├── arena.json          # Manifest
-├── package.json               # NPM package
-├── tsconfig.json              # TypeScript config
+├── package.json        # NPM package
+├── tsconfig.json       # TypeScript config
 ├── src/
-│   ├── index.ts               # Export default
-│   ├── arena.ts               # ArenaPlugin implementation
-│   ├── state.ts               # WorldState, types
-│   ├── tools.ts               # ToolDefinitions (MCP)
-│   ├── validation.ts          # Action validation
-│   ├── scoring.ts             # Scoring, win conditions
-│   └── render.ts              # RenderState types
-├── ui/                        # Frontend components (optional)
+│   ├── index.ts        # Export default
+│   ├── arena.ts        # ArenaPlugin implementation
+│   ├── state.ts        # WorldState, types
+│   ├── tools.ts        # ToolDefinitions (MCP)
+│   ├── validation.ts   # Action validation
+│   ├── scoring.ts      # Scoring, win conditions
+│   └── render.ts       # RenderState types
+├── ui/                 # Frontend components (optional)
 │   ├── GridRenderer.tsx
 │   ├── Minimap.tsx
 │   └── BattleOverlay.tsx
 ├── tests/
 │   ├── arena.test.ts
 │   └── fixtures/
-└── dist/                      # Compiled output
+└── dist/               # Compiled output
 ```
 
 ---
@@ -81,7 +82,19 @@ my-arena/
 
 ```typescript
 // src/arena.ts
-import { ArenaPlugin, ArenaConfig, WorldState, AgentAction, ValidationResult, ActionOutcome, Observation, WinCondition, RenderState } from '@aga/sdk';
+import { 
+  ArenaPlugin, 
+  ArenaConfig, 
+  WorldState, 
+  AgentAction, 
+  ValidationResult, 
+  ActionOutcome, 
+  Observation, 
+  WinCondition, 
+  RenderState,
+  ToolDefinition,
+  DomainEvent 
+} from '@aga/sdk';
 
 export class MyArena implements ArenaPlugin {
   readonly config: ArenaConfig = {
@@ -138,7 +151,7 @@ export class MyArena implements ArenaPlugin {
     const entity = state.entities.get(action.agentId);
     if (!entity) return { valid: false, reason: 'Agent not found' };
 
-    switch (action.type) {
+    switch (action.tool) {
       case 'move':
         return this.validateMove(action, entity, state);
       case 'interact':
@@ -146,7 +159,7 @@ export class MyArena implements ArenaPlugin {
       case 'scan':
         return this.validateScan(action, entity, state);
       default:
-        return { valid: false, reason: `Unknown action: ${action.type}` };
+        return { valid: false, reason: `Unknown action: ${action.tool}` };
     }
   }
 
@@ -160,7 +173,7 @@ export class MyArena implements ArenaPlugin {
     const events: DomainEvent[] = [];
     const newState = { ...state };
 
-    switch (action.type) {
+    switch (action.tool) {
       case 'move':
         this.executeMove(action, newState, events);
         break;
@@ -289,7 +302,7 @@ export class MyArena implements ArenaPlugin {
 
   // Private implementation details
   private validateMove(action: AgentAction, entity: Entity, state: WorldState): ValidationResult {
-    const target = action.payload as MoveAction;
+    const target = action.params as MoveAction;
     const newPos = this.addDirection(entity.position, target.direction);
     
     if (!this.inBounds(newPos, state)) {
@@ -306,7 +319,7 @@ export class MyArena implements ArenaPlugin {
 
   private executeMove(action: AgentAction, state: WorldState, events: DomainEvent[]): void {
     const entity = state.entities.get(action.agentId)!;
-    const target = action.payload as MoveAction;
+    const target = action.params as MoveAction;
     const newPos = this.addDirection(entity.position, target.direction);
     
     entity.position = newPos;
@@ -480,8 +493,8 @@ export function Minimap() {
 
 ## Step 5: Build and Install
 
-```bash
-# package.json
+```json
+// package.json
 {
   "name": "@my-org/aga-arena-my-arena",
   "version": "1.0.0",
@@ -575,7 +588,7 @@ describe('MyArena', () => {
 
 ### Multi-Game Arena
 
-An arena can support multiple games:
+An arena can support multiple games by declaring different configurations:
 
 ```json
 {

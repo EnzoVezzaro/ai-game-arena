@@ -5,6 +5,7 @@ export type DomainEvent =
   | BattleStarted
   | BattleFinished
   | BattleAborted
+  | BattlePaused
   | AgentJoinedBattle
   | AgentLeftBattle
   | TurnStarted
@@ -20,7 +21,11 @@ export type DomainEvent =
   | ScoreUpdated
   | WinConditionMet
   | PluginActivated
-  | PluginDeactivated;
+  | PluginDeactivated
+  | ThinkingStarted
+  | ThinkingFinished
+  | ToolCalled
+  | AgentError;
 
 export interface EventMetadata {
   readonly correlationId: string;
@@ -57,6 +62,14 @@ export interface BattleAborted {
   readonly aggregateId: string;
   readonly timestamp: Date;
   readonly payload: { readonly reason: string };
+  readonly metadata: EventMetadata;
+}
+
+export interface BattlePaused {
+  readonly type: 'BattlePaused';
+  readonly aggregateId: string;
+  readonly timestamp: Date;
+  readonly payload: { readonly reason: string; readonly errors: ReadonlyArray<{ readonly agentId: string; readonly error: string }> };
   readonly metadata: EventMetadata;
 }
 
@@ -206,6 +219,38 @@ export interface PluginDeactivated {
   readonly aggregateId: string;
   readonly timestamp: Date;
   readonly payload: { readonly pluginId: string };
+  readonly metadata: EventMetadata;
+}
+
+export interface ThinkingStarted {
+  readonly type: 'ThinkingStarted';
+  readonly aggregateId: string;
+  readonly timestamp: Date;
+  readonly payload: { readonly agentId: string; readonly turnNumber: number };
+  readonly metadata: EventMetadata;
+}
+
+export interface ThinkingFinished {
+  readonly type: 'ThinkingFinished';
+  readonly aggregateId: string;
+  readonly timestamp: Date;
+  readonly payload: { readonly agentId: string; readonly turnNumber: number; readonly actionType: string };
+  readonly metadata: EventMetadata;
+}
+
+export interface ToolCalled {
+  readonly type: 'ToolCalled';
+  readonly aggregateId: string;
+  readonly timestamp: Date;
+  readonly payload: { readonly agentId: string; readonly tool: string; readonly parameters: Record<string, unknown> };
+  readonly metadata: EventMetadata;
+}
+
+export interface AgentError {
+  readonly type: 'AgentError';
+  readonly aggregateId: string;
+  readonly timestamp: Date;
+  readonly payload: { readonly agentId: string; readonly turnNumber: number; readonly error: string };
   readonly metadata: EventMetadata;
 }
 

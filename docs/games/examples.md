@@ -1,6 +1,6 @@
 # Game Examples
 
-> Reference implementations for different game types and adapter patterns.
+> Reference implementations for different game types and adapter patterns — all as components hosted inside an Arena.
 
 ---
 
@@ -296,11 +296,11 @@ int main(int argc, char* argv[]) {
     WebSocketServer observationServer(observationPort);
 
     // Handle controller connections
-    controllerServer.onConnection([&](autoMessage([&](auto conn, auto msg) {
+    controllerServer.onConnection([&](auto conn, auto msg) {
         auto action = parseAction(msg);
         auto result = engine.executeAction(action);
         conn->send(makeResultMessage(action.id, result));
-    }));
+    });
 
     // Handle observation requests
     observationServer.onMessage([&](auto conn, auto msg) {
@@ -468,6 +468,7 @@ export class SpaceShooterAdapter implements GameAdapter {
     this.page = await this.browser!.newPage();
     this.cdp = await this.page.context().newCDPSession(this.page);
     
+    // Enable domains
     await this.cdp.send('Runtime.enable');
     await this.cdp.send('Input.enable');
     await this.cdp.send('Page.enable');
@@ -802,6 +803,8 @@ export class WasmGameAdapter implements GameAdapter {
 
 ## Example 5: Remote Game (gRPC)
 
+### Protobuf
+
 ```protobuf
 // games/remote-game/proto/game.proto
 syntax = "proto3";
@@ -839,7 +842,34 @@ message ActionResponse {
   string data = 2;
   string error = 3;
 }
+
+message ObservationRequest {
+  string session_id = 1;
+  string agent_id = 2;
+}
+
+message ObservationResponse {
+  string data = 1;
+}
+
+message GetStateRequest {
+  string session_id = 1;
+}
+
+message GetStateResponse {
+  string state = 1;
+}
+
+message TerminateSessionRequest {
+  string session_id = 1;
+}
+
+message TerminateSessionResponse {
+  bool success = 1;
+}
 ```
+
+### TypeScript Adapter
 
 ```typescript
 // games/remote-game/src/adapter.ts

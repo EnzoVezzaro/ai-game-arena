@@ -9,6 +9,8 @@ import { Tokens } from '@ai-game-arena/core';
 import type { Logger, EventBus } from '@ai-game-arena/sdk';
 import { PluginManager } from '@ai-game-arena/plugin-manager';
 import { Runtime } from '@ai-game-arena/runtime';
+import { ChessHtmlAdapter } from 'chess-arena';
+import type { GameAdapter } from '@ai-game-arena/controller';
 import { SqliteStorage } from '@ai-game-arena/storage';
 import { createApiRoutes } from './routes/api';
 import { createBattleRoutes } from './routes/battles';
@@ -104,6 +106,10 @@ export async function createServer(config: ServerConfig) {
     logger: log,
     eventBus,
     storage,
+    adapterFactory: (arenaId: string, _agentId: string): GameAdapter | null => {
+      if (arenaId === 'chess') return new ChessHtmlAdapter();
+      return null;
+    },
   });
   container.register('runtime', runtime);
 

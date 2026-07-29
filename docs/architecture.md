@@ -52,18 +52,18 @@ The platform must become the foundation for AI research, agent evaluation, compe
 
 Every decision must favour:
 
-| Principle                   | Meaning                                                                  |
-| --------------------------- | ------------------------------------------------------------------------ |
-| **Simplicity**              | Prefer the simplest solution that works. Avoid premature abstraction.    |
-| **Modularity**              | Every package has a single responsibility. Clear boundaries.             |
-| **Extensibility**           | Third parties can add features without modifying core code.              |
-| **Maintainability**         | Code must be readable, debuggable, and changeable by a team.             |
-| **Scalability**             | The architecture must support growth in features, users, and ecosystem.  |
-| **Testability**             | Every component can be tested in isolation.                              |
-| **Loose Coupling**          | Packages communicate through interfaces, never concrete implementations. |
-| **High Cohesion**           | Related code lives together. Unrelated code lives apart.                 |
-| **Backwards Compatibility** | Breaking changes are rare and versioned.                                 |
-| **Long-term Evolution**     | Design for 10–20 years, not for the current sprint.                      |
+| Principle | Meaning |
+|-----------|---------|
+| **Simplicity** | Prefer the simplest solution that works. Avoid premature abstraction. |
+| **Modularity** | Every package has a single responsibility. Clear boundaries. |
+| **Extensibility** | Third parties can add features without modifying core code. |
+| **Maintainability** | Code must be readable, debuggable, and changeable by a team. |
+| **Scalability** | The architecture must support growth in features, users, and ecosystem. |
+| **Testability** | Every component can be tested in isolation. |
+| **Loose Coupling** | Packages communicate through interfaces, never concrete implementations. |
+| **High Cohesion** | Related code lives together. Unrelated code lives apart. |
+| **Backwards Compatibility** | Breaking changes are rare and versioned. |
+| **Long-term Evolution** | Design for 10–20 years, not for the current sprint. |
 
 **Do not optimise for writing less code.**
 
@@ -115,58 +115,57 @@ No DI container. Each package exports concrete classes. The runtime wires them a
 ## System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Human Spectators                         │
-└──────────────────────────┬──────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     Human Spectators                            │
+└──────────────────────────┬──────────────────────────────────────┘
                            │
-┌──────────────────────────▼──────────────────────────────────┐
-│                        Web UI                                │
-│              (React — Plugin-Driven Shell)                   │
-└──────────────────────────┬──────────────────────────────────┘
+┌──────────────────────────▼──────────────────────────────────────┐
+│                        Web UI                                   │
+│              (React — Plugin-Driven Shell)                      │
+└──────────────────────────┬──────────────────────────────────────┘
                            │
-┌──────────────────────────▼──────────────────────────────────┐
-│                     Server (Hono)                            │
-│           REST API + WebSocket + Static Files                │
-└──────────────────────────┬──────────────────────────────────┘
+┌──────────────────────────▼──────────────────────────────────────┐
+│                     Server (Hono)                               │
+│           REST API + WebSocket + Static Files                   │
+└──────────────────────────┬──────────────────────────────────────┘
                            │
-┌──────────────────────────▼──────────────────────────────────┐
-│                   Plugin Runtime                             │
-│       Plugin Manager + Discovery + Lifecycle + DI            │
-└──────────────────────────┬──────────────────────────────────┘
+┌──────────────────────────▼──────────────────────────────────────┐
+│                   Plugin Runtime                                │
+│       Plugin Manager + Discovery + Lifecycle + DI               │
+└──────────────────────────┬──────────────────────────────────────┘
                            │
-┌──────────────────────────▼──────────────────────────────────┐
-│                     Battle Runtime                           │
-│     Battle Orchestrator + Match Engine + Session Mgmt        │
-└──────────────────────────┬──────────────────────────────────┘
+┌──────────────────────────▼──────────────────────────────────────┐
+│                   Battle Runtime                                │
+│     Battle Orchestrator + Match Engine + Session Mgmt           │
+└──────────────────────────┬──────────────────────────────────────┘
                            │
-┌──────────────┬───────────┴───────────┬──────────────────────┐
-│              │                       │                       │
-│   ┌──────────▼──────────┐  ┌────────▼────────┐  ┌─────────▼────────┐
-│   │   Arena Runtime     │  │  Controller     │  │  Observation     │
-│   │   (Environment)     │  │  (AI's Body)    │  │  (AI's Senses)   │
-│   └──────────┬──────────┘  └────────┬────────┘  └─────────┬────────┘
-│              │                      │                      │
-│   ┌──────────▼──────────┐  ┌────────▼────────┐  ┌─────────▼────────┐
-│   │   Game Adapter      │  │  MCP Server     │  │  Perception      │
-│   │   (Native Wrapper)  │  │  (Capabilities) │  │  Pipeline        │
-│   └─────────────────────┘  └─────────────────┘  └──────────────────┘
-│              │                      │                      │
-│              └──────────────────────┼──────────────────────┘
-│                                     │
-│                              ┌──────▼──────┐
-│                              │  Agent      │
-│                              │  Runtime    │
-│                              │  (AI Mind)  │
-│                              └──────┬──────┘
-│                                     │
-│                              ┌──────▼──────┐
-│                              │  AI Model   │
-│                              │  (LLM/RL)   │
-│                              └─────────────┘
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────┼──────────────────────────────────────┐
+│                          │                                      │
+│   ┌──────────┐   ┌────────▼────────┐   ┌────────────────────┐  │
+│   │  Arena   │   │  Controller     │   │  Observation       │  │
+│   │ Runtime  │   │  (AI's Body)    │   │  (AI's Senses)     │  │
+│   └────┬─────┘   └────────┬────────┘   └─────────┬──────────┘  │
+│        │                  │                       │            │
+│   ┌────▼─────┐     ┌──────▼──────┐      ┌─────────▼────────┐  │
+│   │  Game    │     │  MCP Server │      │  Perception      │  │
+│   │ Adapter  │     │ (Capabilities)│     │  Pipeline        │  │
+│   └──────────┘     └─────────────┘      └──────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │  Agent       │
+                    │  Runtime     │
+                    │  (AI Mind)   │
+                    └──────┬───────┘
+                           │
+                    ┌──────▼───────┐
+                    │  AI Model    │
+                    │  (LLM/RL)    │
+                    └──────────────┘
 ```
 
-**Key insight**: The Game is just one component inside a Battle. The AI doesn't play a game directly — it participates in a Battle, where it observes the world, reasons, and manipulates its Controller (MCP), exactly like a human manipulating a keyboard, mouse, or gamepad.
+**Key insight:** The **Game is just one component inside an Arena**. The AI doesn't play a game directly — it participates in a Battle, where it observes the world, reasons, and manipulates its Controller (MCP), exactly like a human manipulating a keyboard, mouse, or gamepad.
 
 ---
 
@@ -174,16 +173,16 @@ No DI container. Each package exports concrete classes. The runtime wires them a
 
 The system is organized into 8 bounded contexts. Each has clear ownership, language, and interfaces.
 
-| Context         | Responsibility                                              | Core Language                                |
-| --------------- | ----------------------------------------------------------- | -------------------------------------------- |
-| **Runtime**     | Lifecycle, DI, configuration, event bus, service registry   | runtime, service, lifecycle, config          |
-| **Battle**      | Session orchestration, turns, timing, agent coordination    | battle, session, turn, phase, round          |
-| **Arena**       | Environment, layout, presentation, spectator experience     | arena, panel, overlay, spectator             |
-| **Game**        | Native game adaptation, input/output bridging               | adapter, launcher, input, output             |
-| **Controller**  | Virtual input devices, MCP server, capability exposure      | device, action, capability, tool             |
-| **Observation** | Perception pipeline, state capture, context delivery        | observation, screenshot, state, context      |
-| **Agent**       | AI identity, profiles, reasoning, memory, LLM communication | agent, provider, model, capability, memory   |
-| **Plugin**      | Extension management, discovery, lifecycle, contributions   | manifest, lifecycle, contribution, extension |
+| Context | Responsibility | Core Language |
+|---------|----------------|---------------|
+| **Runtime** | Lifecycle, DI, configuration, event bus, service registry | runtime, service, lifecycle, config |
+| **Battle** | Session orchestration, turns, timing, agent coordination | battle, session, turn, phase, round |
+| **Arena** | Environment, layout, presentation, spectator experience | arena, panel, overlay, spectator |
+| **Game** | Native game adaptation, input/output bridging | adapter, launcher, input, output |
+| **Controller** | Virtual input devices, MCP server, capability exposure | device, action, capability, tool |
+| **Observation** | Perception pipeline, state capture, context delivery | observation, screenshot, state, context |
+| **Agent** | AI identity, profiles, reasoning, memory, LLM communication | agent, provider, model, capability, memory |
+| **Plugin** | Extension management, discovery, lifecycle, contributions | manifest, lifecycle, contribution, extension |
 
 ### Context Map
 
@@ -232,6 +231,12 @@ ai-game-arena/
 │   ├── battle-royale/             # Shrinking arena survival
 │   └── chess/                     # Classic chess
 │
+├── arenas/
+│   ├── battle-tanks/              # Tank battle arena
+│   ├── chess-classic/             # Classic chess arena
+│   ├── chess-3d/                  # 3D chess arena
+│   └── chess-tutorial/            # Chess training arena
+│
 ├── docs/
 │   └── architecture.md            # This document
 │
@@ -243,19 +248,19 @@ ai-game-arena/
 
 ### Package Responsibilities
 
-| Package          | Owns                                                                | Must Not Contain             |
-| ---------------- | ------------------------------------------------------------------- | ---------------------------- |
-| `sdk`            | Public types, Zod schemas, contracts, interfaces                    | Implementation details       |
-| `core`           | Runtime kernel, DI container, event bus, lifecycle, config, logging | Game logic, AI logic, UI     |
-| `runtime`        | Battle orchestration, session lifecycle, agent coordination         | Game logic, UI, persistence  |
-| `match-engine`   | Turn loop, action validation, scoring, win conditions               | AI reasoning, UI, networking |
-| `agent-runtime`  | AI execution, reasoning, memory, prompt construction, MCP client    | Game logic, controller logic |
-| `controller`     | Virtual devices, MCP server, capability registry, platform adapters | AI logic, game logic         |
-| `observation`    | Perception pipeline, screenshots, accessibility, DOM capture        | Game logic, AI logic         |
-| `plugin-manager` | Discovery, loading, dependency resolution, permissions, lifecycle   | Business logic               |
-| `storage`        | Persistence, assets, metadata, caches                               | Business logic               |
-| `mcp`            | MCP protocol, tool definitions, session management                  | Business logic               |
-| `cli`            | Command-line interface, scaffolding                                 | Business logic               |
+| Package | Owns | Must Not Contain |
+|---------|------|------------------|
+| `sdk` | Public types, Zod schemas, contracts, interfaces | Implementation details |
+| `core` | Runtime kernel, DI container, event bus, lifecycle, config, logging | Game logic, AI logic, UI |
+| `runtime` | Battle orchestration, session lifecycle, agent coordination | Game logic, UI, persistence |
+| `match-engine` | Turn loop, action validation, scoring, win conditions | AI reasoning, UI, networking |
+| `agent-runtime` | AI execution, reasoning, memory, prompt construction, MCP client | Game logic, controller logic |
+| `controller` | Virtual devices, MCP server, capability registry, platform adapters | AI logic, game logic |
+| `observation` | Perception pipeline, screenshots, accessibility, DOM capture | Game logic, AI logic |
+| `plugin-manager` | Discovery, loading, dependency resolution, permissions, lifecycle | Business logic |
+| `storage` | Persistence, assets, metadata, caches | Business logic |
+| `mcp` | MCP protocol, tool definitions, session management | Business logic |
+| `cli` | Command-line interface, scaffolding | Business logic |
 
 ---
 
@@ -308,7 +313,7 @@ The core provides the smallest possible kernel. Nothing game-specific lives here
 
 ### Responsibilities
 
-- **Dependency Injection** — Manual composition root. Services are registered by identifier and resolved at startup.
+- **Dependency Injection** — Manual composition root. Services registered by identifier and resolved at startup.
 - **Lifecycle Management** — Startup, shutdown, health checks, graceful degradation.
 - **Configuration** — Layered config: defaults → config file → environment variables → runtime overrides.
 - **Event Bus** — In-process typed event bus. Discriminated union events with correlation IDs.
@@ -417,6 +422,8 @@ export const PluginManifestSchema = z.object({
     'metric',
     'storage',
     'controller',
+    'provider',
+    'observation',
   ]),
   author: z.string().optional(),
   license: z.string().optional(),
@@ -545,8 +552,8 @@ export interface PluginContext {
 plugins/
   plugin-chat/
     plugin.json        ← Manifest
-    package.json             ← NPM package
-    dist/index.js            ← Entry point (compiled)
+    package.json       ← NPM package
+    dist/index.js      ← Entry point (compiled)
   plugin-polls/
     plugin.json
     ...
@@ -566,7 +573,7 @@ The plugin manager scans these directories, reads manifests, validates them, res
 
 ## Battle System
 
-A Battle is the primary executable unit. It composes all components together.
+A Battle is the primary executable unit. It composes all components together inside an Arena.
 
 ### Battle Definition
 
@@ -592,12 +599,17 @@ A Battle is the primary executable unit. It composes all components together.
   ],
   "plugins": ["plugin-chat", "plugin-polls"],
   "match": {
-    "maxTurns": 100,
-    "timeout": "30m",
     "seed": 42
+  },
+  "metadata": {
+    "description": "Test battle between GPT and Llama",
+    "tags": ["evaluation", "comparison"],
+    "createdBy": "user-123"
   }
 }
 ```
+
+> **Note:** `maxTurns` and `turnTimeout` are intentionally omitted from the request the frontend sends. The runtime defaults `maxTurns` to `Infinity` and `turnTimeout` to `0` — battles run until the arena's win condition fires, or until an admin pauses/resumes/aborts. The only latency bound is the provider retry policy inside the agent runtime (the agent's LLM call is retried a small number of times before the agent is treated as non-functional and the battle aborts). `seed` is auto-generated server-side for reproducible replays; clients may override it only for deterministic test suites.
 
 ### Battle Lifecycle
 
@@ -621,7 +633,7 @@ Match Engine
 Capture Observation
       │
       ▼
-Observation
+Observation Pipeline
       │
       ▼
 Agent Runtime
@@ -657,7 +669,7 @@ Observation
 Match Engine (next turn)
 ```
 
-The Game never knows an AI exists. It only receives native input.
+**The Game never knows an AI exists. It only receives native input.**
 
 ### Battle Aggregate
 
@@ -668,11 +680,14 @@ export class Battle extends EventSourcedAggregate {
   private agents: AgentSession[];
   private arena: ArenaSession;
   private game: GameSession;
+  private plugins: PluginSession[];
+  private replay: ReplayRecorder;
 
   constructor(id: BattleId, config: BattleConfig) {
     super(id);
     this.state = BattleState.created(config);
     this.agents = [];
+    this.replay = new ReplayRecorder(id);
   }
 
   joinAgent(agent: AgentConfig): void {
@@ -710,9 +725,27 @@ export class Battle extends EventSourcedAggregate {
         break;
       case 'BattleStarted':
         this.state = this.state.transition('running');
+        this.replay.record(event);
         break;
       case 'ActionExecuted':
         this.state = this.state.advanceTurn();
+        this.replay.record(event);
+        break;
+      case 'BattlePaused':
+        this.state = this.state.transition('paused');
+        this.replay.record(event);
+        break;
+      case 'BattleResumed':
+        this.state = this.state.transition('running');
+        this.replay.record(event);
+        break;
+      case 'BattleAborted':
+      case 'BattleFinished':
+        this.state = this.state.transition(
+          event.type === 'BattleFinished' ? 'completed' : 'aborted',
+        );
+        this.replay.record(event);
+        this.replay.finalize();
         break;
     }
   }
@@ -723,7 +756,7 @@ export class Battle extends EventSourcedAggregate {
 
 ## Arena System
 
-The Arena is the environment. It is **not** the game. The Arena hosts games, spectators, overlays, chat, inspectors, timelines, dashboards, plugins, and developer tools.
+The **Arena is the environment**. It is **not** the game. The Arena hosts games, spectators, overlays, chat, inspectors, timelines, dashboards, plugins, and developer tools.
 
 The Game occupies one area of the Arena. Different Arenas can host the same Game.
 
@@ -782,13 +815,21 @@ export interface ArenaPlugin {
   readonly config: ArenaConfig;
 
   initialize(seed?: number): WorldState;
+  shutdown(): Promise<void>;
+
+  // Game logic (pure functions)
   getTools(): ToolDefinition[];
   validateAction(action: AgentAction, state: WorldState): ValidationResult;
   executeAction(action: AgentAction, state: WorldState): ActionOutcome;
   getObservation(agentId: string, state: WorldState): Observation;
   checkWinCondition(state: WorldState): WinCondition | null;
   getScores(state: WorldState): Record<string, number>;
+
+  // Rendering
   getRenderState(state: WorldState): RenderState;
+
+  // Optional: custom UI contributions
+  getUiContributions?(): ArenaUiContribution[];
 }
 
 export interface ArenaConfig {
@@ -805,32 +846,47 @@ export interface ArenaConfig {
 
 The `display.arena` field declares the arena container — its plugins, UI layout, and default game:
 
-| Field                   | Purpose                                               |
-| ----------------------- | ----------------------------------------------------- |
-| `plugins`               | Plugins to always load (chat is always default)       |
-| `game`                  | Default game plugin ID to mount                       |
-| `defaultStrategies`     | Recommended agent strategies                          |
+| Field | Purpose |
+|-------|---------|
+| `plugins` | Plugins to always load (chat is always default) |
+| `game` | Default game plugin ID to mount |
+| `defaultStrategies` | Recommended agent strategies |
 | `mandatoryCapabilities` | Game capabilities every agent is always equipped with |
-| `ui`                    | UI elements to render in the arena                    |
+| `ui` | UI elements to render in the arena |
 
 ### UI Element Types
 
-| Type                | Purpose                                    |
-| ------------------- | ------------------------------------------ |
-| `panel`             | Main content area (game board, grid, etc.) |
-| `sidebar`           | Side content (agent status, info)          |
-| `event-log`         | Match event stream                         |
-| `chat`              | Spectator-agent chat                       |
-| `scoreboard`        | Live scores                                |
-| `header` / `footer` | Top/bottom bars                            |
-| `overlay`           | Floating elements                          |
-| `custom`            | Registered UI component                    |
+| Type | Purpose |
+|------|---------|
+| `panel` | Main content area (game board, grid, 3D view) |
+| `sidebar` | Side content (agent status, info) |
+| `event-log` | Match event stream |
+| `chat` | Spectator-agent chat |
+| `scoreboard` | Live scores |
+| `header` / `footer` | Top/bottom bars |
+| `overlay` | Floating elements |
+| `custom` | Registered UI component |
+
+### Multi-Arena Games
+
+A single Game can be hosted in multiple Arenas:
+
+```
+Game: Chess
+├── Arena: Classic Chess (2D board, standard UI)
+├── Arena: 3D Chess (3D pieces, AR spectator view)
+├── Arena: Chess Arena (chat, polls, coaching overlay)
+├── Arena: Speed Chess (clock UI, time pressure visualizations)
+└── Arena: Chess Tutorial (guided moves, hints, lessons)
+```
+
+Each Arena declares the same `gameId` but different `display.arena` configuration.
 
 ---
 
 ## Game System
 
-A Game is an adapter around a native application. Its responsibility is **not** to implement gameplay. The gameplay already exists inside the native game.
+A Game is an **adapter around a native application**. Its responsibility is **not** to implement gameplay. The gameplay already exists inside the native game.
 
 The Game package simply exposes the minimum integration required for AI Game Arena to interact with it.
 
@@ -849,9 +905,9 @@ The Game package simply exposes the minimum integration required for AI Game Are
           │                     │
           ▼                     ▼
     Native Input API      Native Render API
-                 │
-                 ▼
-            Native Game
+                  │
+                  ▼
+             Native Game
 ```
 
 ### Game Interface
@@ -874,7 +930,6 @@ export interface GameAdapter {
 ### Game Responsibilities
 
 A Game adapter may:
-
 - Start and stop the native game
 - Expose metadata
 - Register platform adapters
@@ -884,7 +939,6 @@ A Game adapter may:
 - Expose game configuration
 
 A Game must **never** implement:
-
 - AI logic
 - Gameplay rules
 - Match orchestration
@@ -899,15 +953,16 @@ A Game must **never** implement:
 ```
 games/
   battle-tanks/
-    arena.json       # Arena manifest
+    game.json       # Manifest
     package.json
     src/
-      index.ts              # Export default BattleTanksArena
-      battle-tanks.ts       # ArenaPlugin implementation
-      state.ts              # World state management
-      tools.ts              # Tool definitions
-      validation.ts         # Action validation
-      scoring.ts            # Scoring logic
+      index.ts              # Export default BattleTanksGame
+      adapter.ts            # GameAdapter implementation
+      process.ts            # Process management
+      protocol.ts           # AGA protocol messages
+      controller-adapter.ts # ControllerAdapter implementation
+      observation-adapter.ts # ObservationAdapter implementation
+      types.ts              # Game-specific types
     dist/
 ```
 
@@ -943,7 +998,6 @@ Game
 ```
 
 The Game never knows whether the input originated from:
-
 - An AI agent
 - A human player
 - A replay
@@ -1123,24 +1177,20 @@ Every agent connects through MCP. The MCP system provides universal AI abilities
 ### Built-in Capabilities
 
 **Perception:**
-
 - `observe_world()` — Perceive the environment state
 - `inspect_state()` — Inspect detailed state information
 - `get_context()` — Get current context and history
 
 **Communication:**
-
 - `send_message()` — Send messages to other agents and spectators
 - `receive_message()` — Receive messages from others
 - `listen_events()` — Listen to match events
 
 **Identity:**
-
 - `get_profile()` — Get agent's own profile
 - `get_capabilities()` — List available capabilities
 
 **Memory:**
-
 - `remember()` — Store information in memory
 - `recall()` — Retrieve information from memory
 
@@ -1149,13 +1199,11 @@ Every agent connects through MCP. The MCP system provides universal AI abilities
 Plugins extend agent intelligence. When a plugin is installed, it registers new MCP tools that agents can discover and use.
 
 Example: Installing `plugin-diplomacy` automatically adds:
-
 - `negotiate()`
 - `propose_alliance()`
 - `vote()`
 
 Example: Installing `plugin-memory` adds:
-
 - `remember()`
 - `recall()`
 
@@ -1163,11 +1211,11 @@ The MCP capability registry dynamically discovers available tools. Agents do not
 
 ### Three Tiers of Capabilities
 
-| Tier                 | Source              | Toggleable      | Example                                       |
-| -------------------- | ------------------- | --------------- | --------------------------------------------- |
-| **System Mandatory** | Platform (inherent) | No              | `observe`, `communicate`, `pass`, `yield`     |
-| **Game Mandatory**   | Arena manifest      | No              | `move`, `move_piece`                          |
-| **Special Skills**   | Arena manifest      | Yes (per agent) | `attack`, `scan`, `shield`, `get_legal_moves` |
+| Tier | Source | Toggleable | Example |
+|------|--------|------------|---------|
+| **System Mandatory** | Platform (inherent) | No | `observe`, `communicate`, `pass`, `yield` |
+| **Game Mandatory** | Arena manifest | No | `move`, `move_piece` |
+| **Special Skills** | Arena manifest | Yes (per agent) | `attack`, `scan`, `shield`, `get_legal_moves` |
 
 Agent's full capability set = System mandatory + Game mandatory + Selected special skills.
 
@@ -1307,13 +1355,13 @@ export interface StorageAdapter {
 
 ### Storage Layers
 
-| Layer           | Purpose                       | Implementation |
-| --------------- | ----------------------------- | -------------- |
-| **Event Store** | Append-only event log         | SQLite         |
-| **Match Store** | Battle state, configurations  | SQLite         |
-| **Agent Store** | Profiles, stats, badges       | SQLite         |
-| **Cache**       | Session data, ephemeral state | In-memory      |
-| **Assets**      | Game assets, replays          | File system    |
+| Layer | Purpose | Implementation |
+|-------|---------|----------------|
+| **Event Store** | Append-only event log | SQLite |
+| **Match Store** | Battle state, configurations | SQLite |
+| **Agent Store** | Profiles, stats, badges | SQLite |
+| **Cache** | Session data, ephemeral state | In-memory |
+| **Assets** | Game assets, replays | File system |
 
 ### Storage Namespacing
 
@@ -1400,14 +1448,14 @@ The frontend knows almost nothing. It doesn't know what Chess is. It doesn't kno
 |                    Browser                           |
 +------------------------------------------------------+
 
-                 UI Runtime (Shell)
+                  UI Runtime (Shell)
 
 +------------------------------------------------------+
 |                                                      |
 |  Layout Engine                                       |
 |  Navigation                                           |
 |  Routing                                              |
-|  Theme                                                 |
+|  Theme                                                |
 |  Window Manager                                       |
 |  Dock Manager                                         |
 |  Panel Manager                                        |
@@ -1427,7 +1475,7 @@ The frontend knows almost nothing. It doesn't know what Chess is. It doesn't kno
 | Dashboards                                           |
 | Sidebars                                             |
 | Menus                                                 |
-| Toolbars                                              |
+| Toolbars                                             |
 | Widgets                                               |
 |                                                      |
 +------------------------------------------------------+
@@ -1467,184 +1515,109 @@ apps/web/src/
     docking/              # Window/panel docking
     commands/             # Command palette
     events/               # Frontend event bus
-    registry/             # Component registry
-  components/
-    shell/                # Shell chrome (header, status bar, nav)
-    layout/               # Layout primitives (dock, panel, split)
-    primitives/           # Shared UI components
-  pages/
-    dashboard/            # Dashboard page (empty by default)
-    battles/              # Battles list and battle view
-    marketplace/          # Plugin marketplace
-    settings/             # Settings page
-  services/
-    plugin-loader/        # Frontend plugin loading
-    arena-loader/         # Arena UI contribution loading
-    game-loader/          # Game UI contribution loading
-  hooks/
-  styles/
+  contributions/
+    arenas/               # Arena components (panels, overlays, etc.)
+    games/                # Game-specific components
+    plugins/              # Plugin UI contributions
+  plugins/
+    plugin-chat/          # Chat plugin UI
+    plugin-polls/         # Polls plugin UI
+    plugin-export/        # Export plugin UI
+    plugin-rewards/       # Rewards plugin UI
 ```
-
-Notice: **no game components, no chat components, no tournament components, no chess components** in the shell. Everything is contributed dynamically.
-
-### Dynamic Discovery
-
-The frontend never contains code like:
-
-```typescript
-import ChatPanel from './components/ChatPanel';
-import ChessBoard from './components/ChessBoard';
-import BattleGrid from './components/BattleGrid';
-```
-
-Instead:
-
-```
-Manifest → Component Registry → Dynamic Import → Mount
-```
-
-Exactly like VS Code extensions.
 
 ---
 
 ## CLI
 
+The CLI tool (`aga`) provides scaffolding, management, and debugging commands.
+
 ### Commands
 
-```bash
-# Plugin management
-arena plugin list                    # List all installed plugins
-arena plugin create <name>           # Scaffold a new plugin
-
-# Arena management
-arena arena list                     # List all available arenas
-
-# Battle management
-arena run                            # Default: battle-tanks, aggressive vs defensive
-arena run --arena chess --agents aggressive,defensive --seed 7
-arena run --agents custom,defensive --names "Cautious,Bravo"
-arena show <battleId>                # Show battle details
-arena export <battleId>              # Export battle data
-arena replay <battleId>              # Replay a battle
-
-# Agent management
-arena agent list                     # List all agents
-
-# Profile management
-arena profile list                   # List all profiles
-arena profile create                 # Create a new profile
-
-# Server
-arena serve                          # Start the server
-arena serve --port 3001              # Start on specific port
 ```
-
-### CLI Implementation
-
-```typescript
-// packages/cli/src/index.ts
-#!/usr/bin/env bun
-import { Command } from 'commander';
-
-const program = new Command();
-
-program
-  .name('arena')
-  .description('AI Game Arena — The operating system for AI environments')
-  .version('1.0.0');
-
-// Plugin commands
-program
-  .command('plugin')
-  .description('Manage plugins')
-  .command('list')
-  .description('List all installed plugins')
-  .action(async () => { /* ... */ });
-
-// Battle commands
-program
-  .command('run')
-  .description('Run a battle')
-  .option('--arena <id>', 'Arena to use', 'battle-tanks')
-  .option('--agents <strategies>', 'Agent strategies', 'aggressive,defensive')
-  .option('--seed <number>', 'Random seed')
-  .action(async (options) => { /* ... */ });
-
-program.parse();
+aga arena list                    — List all arenas
+aga arena show <id>               — Show arena manifest
+aga arena create                  — Scaffold new arena
+aga arena test <id>               — Test arena in isolation
+aga game list                     — List all games
+aga game show <id>                — Show game manifest
+aga game create                   — Scaffold new game
+aga battle create                 — Create a new battle
+aga battle start <id>             — Start a battle
+aga battle replay <id>            — View battle replay
+aga plugin list                   — List all plugins
+aga plugin install <pkg>          — Install plugin from npm
+aga plugin remove <id>            — Remove a plugin
+aga agent list                    — List all agents
+aga agent create                  — Create new agent
+aga profile list                  — List all profiles
+aga profile create                — Create new profile
+aga server start                  — Start the server
+aga server stop                   — Stop the server
+aga doctor                        — Diagnose installation
 ```
 
 ---
 
 ## Manifest System
 
-Every component has its own manifest. The manifest hierarchy:
+Three manifest types:
 
-### system.json
+| Manifest | File | Purpose |
+|----------|------|---------|
+| Plugin | `plugin.json` | General extensions |
+| Arena | `arena.json` | Battle environments |
+| Game | `game.json` | Native game adapters |
 
-```json
-{
-  "version": "1.0.0",
-  "services": ["match-engine", "plugin-manager", "storage"],
-  "permissions": {}
-}
-```
-
-### arena.json (Arena)
-
-Defines the Arena layout, panels, UI, plugins, permissions, and presentation.
-
-### game.json (Game)
-
-Defines Game metadata, assets, adapters, and capabilities.
-
-### plugin.json (Plugin)
-
-Defines plugin metadata, dependencies, and contributions.
-
-### battle.json (Battle)
-
-Defines a runnable battle by composing Arena, Game, Agents, Plugins, Models, Match configuration, and Runtime configuration.
+All use Zod schemas for validation.
 
 ---
 
 ## Replay System
 
-Every match must be reproducible. Store:
+Every battle is fully reproducible.
 
-- Initial World State
-- Random Seed
-- Events
-- Tool Calls
-- Agent Decisions
+### Replay Requirements
 
-### Replay Controller
+1. **Deterministic Game** — Same seed = same outcome
+2. **Event Sourcing** — All state changes as events
+3. **Recorded Inputs** — All agent actions recorded
+4. **Time Travel** — Step forward/backward through turns
+
+### Replay Format
+
+```json
+{
+  "id": "replay-001",
+  "battleId": "battle-001",
+  "seed": 42,
+  "arenaId": "battle-tanks",
+  "gameId": "battle-tanks",
+  "agents": [
+    { "id": "agent-1", "name": "GPT", "strategy": "aggressive" },
+    { "id": "agent-2", "name": "Llama", "strategy": "defensive" }
+  ],
+  "events": [
+    { "turn": 1, "type": "ActionExecuted", "agentId": "agent-1", "action": {...} },
+    { "turn": 1, "type": "StateChanged", "changes": [...] }
+  ],
+  "finalState": { ... },
+  "winner": "agent-1"
+}
+```
+
+### Verification
 
 ```typescript
-// packages/runtime/src/replay/replay-controller.ts
-export class ReplayController {
-  constructor(
-    private readonly eventStore: EventStore,
-    private readonly battleId: string,
-  ) {}
+export function verifyDeterminism(battleId: BattleId): DeterminismReport {
+  const original = ReplayManager.get(battleId);
+  const replayed = BattleOrchestrator.replay(battleId);
 
-  async loadReplay(): Promise<ReplayData> {
-    const events = await this.eventStore.getEvents(this.battleId);
-    const initialState = events[0].payload.initialState;
-    const seed = events[0].payload.seed;
-
-    return {
-      initialState,
-      seed,
-      events,
-      toolCalls: events.filter((e) => e.type === 'ToolExecuted'),
-      agentDecisions: events.filter((e) => e.type === 'ActionExecuted'),
-    };
-  }
-
-  async playReplay(speed: number = 1): Promise<void> {
-    const replay = await this.loadReplay();
-    // Replay events at specified speed
-  }
+  return {
+    deterministic: deepEqual(original.events, replayed.events),
+    differences: findDifferences(original.events, replayed.events),
+    stateHashMatch: original.finalStateHash === replayed.finalStateHash,
+  };
 }
 ```
 
@@ -1652,136 +1625,81 @@ export class ReplayController {
 
 ## Security Model
 
-### Plugin Permissions
+### Sandboxing
 
-Plugins declare required permissions in their manifest:
+| Component | Isolation |
+|-----------|-----------|
+| Native Games | Process sandbox, restricted FS, no network (unless declared) |
+| WASM Games | Memory sandbox, no syscalls |
+| Browser Games | Browser sandbox, CDP only |
+| Remote Games | Network boundary, auth required |
+| Plugins | Namespaced storage, permission system |
+| Agents | MCP capability gating, no direct system access |
+
+### Permissions
 
 ```json
 {
   "permissions": [
     "agent.communication",
-    "battle.create",
-    "storage.read",
-    "storage.write",
-    "server.route"
+    "agent.memory",
+    "arena.inspect",
+    "battle.control",
+    "storage.read:chat",
+    "storage.write:chat"
   ]
 }
 ```
-
-### Permission Categories
-
-| Permission            | Scope                                |
-| --------------------- | ------------------------------------ |
-| `agent.communication` | Send/receive messages to/from agents |
-| `agent.observation`   | Access agent observations            |
-| `battle.create`       | Create new battles                   |
-| `battle.modify`       | Modify running battles               |
-| `storage.read`        | Read from storage                    |
-| `storage.write`       | Write to storage                     |
-| `server.route`        | Register server routes               |
-| `cli.command`         | Register CLI commands                |
-
-### API Key Security
-
-- API keys are stored per-profile, never in `.env` files
-- Keys are resolved at match start from agent profiles
-- The match UI never exposes connection settings directly
-- Keys are encrypted at rest in production
 
 ---
 
 ## Implementation Roadmap
 
-### Phase 1 — Foundation
+### Phase 1: Foundation (Weeks 1-4)
+- [ ] Core runtime (DI, lifecycle, event bus, config, logging)
+- [ ] Plugin manager (discovery, validation, lifecycle)
+- [ ] SDK (types, schemas, contracts)
+- [ ] Storage (SQLite event store, match store)
+- [ ] CLI scaffolding
 
-Create:
+### Phase 2: Battle Core (Weeks 5-8)
+- [ ] Battle orchestrator
+- [ ] Match engine (turn loop, validation, scoring)
+- [ ] Arena system (interface, manifest, lifecycle)
+- [ ] Game system (adapter interface, lifecycle)
+- [ ] Controller (MCP server, device registry)
+- [ ] Observation (pipeline, capture, delivery)
 
-- Monorepo setup (Bun workspaces, TypeScript, ESLint, Prettier)
-- `sdk` package — types, schemas, contracts, interfaces
-- `core` package — runtime kernel, DI container, event bus, lifecycle, config, logging
-- Event system — typed discriminated union events, event bus, event store
-- Storage package — SQLite persistence layer
+### Phase 3: Agent & AI (Weeks 9-12)
+- [ ] Agent runtime (profiles, memory, reasoning)
+- [ ] MCP capability layer
+- [ ] Provider integrations (OpenAI, Anthropic, local)
+- [ ] Strategy system
 
-### Phase 2 — Runtime
+### Phase 4: Server & Frontend (Weeks 13-16)
+- [ ] Hono server (REST, WebSocket)
+- [ ] React shell (layout, docking, contributions)
+- [ ] Arena components (panels, overlays, inspectors)
+- [ ] Battle UI (event log, scoreboard, chat)
 
-Create:
+### Phase 5: Games & Arenas (Weeks 17-20)
+- [ ] Chess (native UCI adapter)
+- [ ] Battle Tanks (native C++ WebSocket adapter)
+- [ ] Chess Arenas (classic, 3D, tutorial, speed)
+- [ ] Battle Tanks Arena
 
-- `plugin-manager` package — discovery, loading, lifecycle, permissions
-- `match-engine` package — turn-based match execution
-- `runtime` package — battle orchestrator, session management
-- Plugin manifest system — Zod validation, discovery flow
-- Arena runtime — environment hosting
+### Phase 6: Plugins & Polish (Weeks 21-24)
+- [ ] Chat plugin
+- [ ] Polls plugin
+- [ ] Export plugin
+- [ ] Rewards plugin
+- [ ] Determinism verification
+- [ ] Performance optimization
+- [ ] Documentation
 
-### Phase 3 — Agent Intelligence
-
-Create:
-
-- `mcp` package — MCP protocol implementation, tool definitions, session management
-- `controller` package — virtual input devices, MCP server, platform adapters
-- `observation` package — perception pipeline
-- `agent-runtime` package — LLM agent implementation, reasoning, memory
-- Agent profiles and strategies
-
-### Phase 4 — Worlds
-
-Create:
-
-- First arena plugins — `battle-tanks`, `battle-royale`, `chess`
-- Game adapters for each arena
-- Game-specific tools and capabilities
-- Arena container system
-
-### Phase 5 — Experience
-
-Create:
-
-- `server` package — Hono API server, WebSocket
-- `web` package — React spectator UI shell
-- Frontend plugin system — dynamic component loading
-- Built-in plugins — `plugin-chat`, `plugin-polls`, `plugin-export`, `plugin-rewards`
-- Spectator experience
-
-### Phase 6 — Competition
-
-Create:
-
-- Tournament system (plugin)
-- Rankings and leaderboards (plugin)
-- Metrics and analytics (plugin)
-- Advanced replay system
-- Export and sharing capabilities
-
----
-
-## Appendix A: Key Architectural Decisions
-
-| Decision                | Choice                                     | Rationale                                                                    |
-| ----------------------- | ------------------------------------------ | ---------------------------------------------------------------------------- |
-| **Architecture Style**  | Hexagonal + Event-Driven + Manifest-Driven | Combines proven patterns for testability, extensibility, and discoverability |
-| **DI Approach**         | Manual composition root                    | Explicit, debuggable, no decorator magic. Pattern used by VS Code.           |
-| **Event System**        | In-process typed event bus                 | No external broker needed initially. Can add Kafka/RabbitMQ later.           |
-| **Plugin Discovery**    | Manifest-driven with Zod validation        | VS Code / Backstage pattern. Validates early, loads lazily.                  |
-| **Storage**             | SQLite (dev) / PostgreSQL (prod)           | Simple for development, scalable for production                              |
-| **Monorepo**            | Bun workspaces                             | Fast, native TypeScript, simple configuration                                |
-| **Domain Model**        | DDD tactical patterns                      | Aggregates, value objects, domain events for complex business logic          |
-| **Battle as Unit**      | Battle = primary executable                | Composes all components. More powerful than just "Game".                     |
-| **Controller as Body**  | MCP Server with virtual devices            | AI interacts like a human — through input devices, not game APIs             |
-| **Game as Adapter**     | Thin wrapper around native game            | AI Game Arena is not a game engine. It's an AI runtime.                      |
-| **Frontend as Runtime** | VS Code-style contribution system          | Shell knows nothing. Everything is contributed dynamically.                  |
-
-## Appendix B: Reference Systems
-
-| System                 | Pattern Adopted                                                           |
-| ---------------------- | ------------------------------------------------------------------------- |
-| VS Code                | Extension host, activation events, contribution points, process isolation |
-| Backstage              | Extension points, plugin lifecycle, manifest-driven discovery             |
-| Homebrew               | Convention-based discovery, tap structure                                 |
-| OpenAI Gym / Gymnasium | Environment interface, wrapper pattern, reset/step lifecycle              |
-| PettingZoo             | Multi-agent environments, AEC and parallel APIs                           |
-| OpenSpiel              | Game/State abstractions, factory registration, typed parameters           |
-| Godot                  | Addon system, plugin.cfg manifests                                        |
-| Unreal Engine          | Gameplay Ability System, Game Feature Plugins                             |
-| Kubernetes             | CRDs, admission pipeline, operator pattern                                |
-| MCP                    | Registry, server.json, capability negotiation                             |
-| Nx                     | Three-phase plugin lifecycle, worker isolation                            |
-| Bun                    | Workspace protocol, catalog management                                    |
+### Phase 7: Ecosystem (Ongoing)
+- [ ] Plugin marketplace
+- [ ] Community arenas/games
+- [ ] Tournament system
+- [ ] Analytics dashboard
+- [ ] API stability guarantees

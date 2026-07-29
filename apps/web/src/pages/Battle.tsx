@@ -20,7 +20,13 @@ interface BattleApi {
     phase?: string;
     currentTurn?: number;
     turn?: number;
-    data?: Record<string, unknown>;
+  };
+  renderState?: {
+    type?: string;
+    grid_size?: number;
+    units?: Unit[];
+    currentTurn?: string;
+    moveHistory?: Array<Record<string, unknown>>;
   };
   createdAt?: number;
   startedAt?: number;
@@ -135,17 +141,45 @@ export function Battle() {
     if (id) subscribe(id);
   }, [id, subscribe]);
 
-  // Merge WS events into the event stream
+  // Track which agents are currently thinking
+  const [thinkingAgents, setThinkingAgents] = useState<Set<string>>(new Set());
+
+  // Merge WS events into the event stream and update thinking state
   useEffect(() => {
     if (!wsEvents.length) return;
     const recent = wsEvents.slice(-1)[0];
     if (!recent || recent.type !== 'event') return;
+    const payload = recent.payload as Record<string, unknown> | undefined;
+
+    let summary = recent.eventType;
+    if (recent.eventType === 'ThinkingStarted') {
+      summary = `🤔 ${(payload?.agentId as string)?.slice(0, 12)}… thinking`;
+      setThinkingAgents((prev) => new Set(prev).add(payload?.agentId as string));
+    } else if (recent.eventType === 'ThinkingFinished') {
+      summary = `💡 ${(payload?.agentId as string)?.slice(0, 12)}… decided: ${payload?.actionType ?? '?'}`;
+      setThinkingAgents((prev) => {
+        const next = new Set(prev);
+        next.delete(payload?.agentId as string);
+        return next;
+      });
+    } else if (recent.eventType === 'ToolCalled') {
+      const params = payload?.parameters as Record<string, unknown> | undefined;
+      const paramStr = params ? Object.values(params).slice(0, 4).join(',') : '';
+      summary = `🔧 ${(payload?.agentId as string)?.slice(0, 12)}… ${payload?.tool}(${paramStr})`;
+    } else if (recent.eventType === 'AgentError') {
+      summary = `❌ ${(payload?.agentId as string)?.slice(0, 12)}… ${payload?.error ?? 'Unknown error'}`;
+    } else if (recent.eventType === 'ActionRejected') {
+      summary = `⛔ ${(payload?.agentId as string)?.slice(0, 12)}… ${payload?.reason ?? 'Invalid'}`;
+    } else {
+      summary = (payload?.summary as string) || recent.eventType;
+    }
+
     setEvents((prev) => [
       ...prev,
       {
         type: recent.eventType,
-        turn: (recent.payload as { turn?: number } | undefined)?.turn,
-        summary: (recent.payload as { summary?: string } | undefined)?.summary || recent.eventType,
+        turn: (payload?.turn as number) ?? (payload?.turnNumber as number),
+        summary,
         timestamp: recent.timestamp ? new Date(recent.timestamp).getTime() : undefined,
       },
     ]);
@@ -185,9 +219,9 @@ export function Battle() {
     [battle],
   );
 
-  const gridState = battle?.state?.data as { grid_size?: number; units?: Unit[] } | undefined;
+  const gridState = battle?.renderState as { grid_size?: number; units?: Unit[] } | undefined;
   const hasGrid = gridState && gridState.grid_size && Array.isArray(gridState.units);
-  const turn = battle?.state?.currentTurn ?? battle?.state?.turn ?? 0;
+  const turn = battle?.state?.currentTurn ?? 0;
   const maxTurns = (battle?.config as { maxTurns?: number } | undefined)?.maxTurns ?? 30;
 
   if (loading) return <PageLoader label="Composing battle" />;
@@ -292,7 +326,7 @@ export function Battle() {
                 Agent Roster
               </span>
             </div>
-            <AgentRoster agents={agents} units={hasGrid ? gridState!.units : []} />
+            <AgentRoster agents={agents} units={hasGrid ? gridState!.units : []} thinking={thinkingAgents} />
           </div>
           <div className="glass rounded-2xl p-3">
             <div className="flex items-center gap-2 mb-2 px-1">

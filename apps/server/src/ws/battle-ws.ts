@@ -33,6 +33,10 @@ export class BattleWebSocketServer {
       'ObservationCaptured',
       'WinConditionMet',
       'ScoreUpdated',
+      'ThinkingStarted',
+      'ThinkingFinished',
+      'ToolCalled',
+      'AgentError',
     ] as const;
 
     for (const eventType of battleEventTypes) {

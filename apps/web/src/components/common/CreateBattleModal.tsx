@@ -73,6 +73,12 @@ export function CreateBattleModal({ open, onClose, onCreated }: CreateBattleModa
   // Initial load: arenas, games, agents.
   useEffect(() => {
     if (!open) return;
+    setArenaId('');
+    setGameId('');
+    setSelectedAgentIds([]);
+    setAutoStart(true);
+    setCreating(false);
+    setError(null);
     Promise.all([
       fetch('/api/arenas').then((r) => r.json()),
       fetch('/api/games').then((r) => r.json()),
@@ -82,6 +88,7 @@ export function CreateBattleModal({ open, onClose, onCreated }: CreateBattleModa
         setArenas(a ?? []);
         setGames(g ?? []);
         setAgents(ag ?? []);
+        if (a?.length) setArenaId(a[0]!.id);
       })
       .catch((err: Error) => setError(err.message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -125,8 +132,8 @@ export function CreateBattleModal({ open, onClose, onCreated }: CreateBattleModa
     [arenas, arenaId],
   );
 
-  const minP = selectedArena?.minPlayers ?? arenaDetail?.minPlayers ?? 2;
-  const maxP = selectedArena?.maxPlayers ?? arenaDetail?.maxPlayers ?? 4;
+  const minP = game?.min_players ?? selectedArena?.minPlayers ?? arenaDetail?.minPlayers ?? 2;
+  const maxP = game?.max_players ?? selectedArena?.maxPlayers ?? arenaDetail?.maxPlayers ?? 4;
   const agentCountValid = selectedAgentIds.length >= minP && selectedAgentIds.length <= maxP;
 
   function toggleAgent(id: string) {
@@ -194,6 +201,7 @@ export function CreateBattleModal({ open, onClose, onCreated }: CreateBattleModa
 
   function handleClose() {
     setError(null);
+    setCreating(false);
     onClose();
   }
 

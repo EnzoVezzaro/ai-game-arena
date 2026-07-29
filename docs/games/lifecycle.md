@@ -1,55 +1,35 @@
 # Game Lifecycle
 
-> The complete lifecycle of a Game Adapter from initialization to disposal.
+> The complete lifecycle of a Game Adapter as a component hosted inside an Arena, from initialization to disposal.
 
 ---
 
-## Lifecycle Overview
+## Overview
+
+The Game is **hosted by the Arena**. The Arena owns the Game's lifecycle — launching it, connecting controllers/observations, starting/stopping it, and disposing it. The Game itself knows nothing about the Arena, battles, agents, spectators, or any other Arena systems.
 
 ```
-┌─────────────┐
-│  Created    │  GameManager.createGame(config)
-└──────┬──────┘
-       │ initialize(config)
-       ▼
-┌──────────────┐
-│ Initializing │  Load config, validate, prepare resources
-└──────┬───────┘
-       │ launch()
-       ▼
-┌────────────┐
-│  Launching │  Spawn process, connect ports, wait for ready
-└──────┬─────┘
-       │ attachController/attachObservation
-       ▼
-┌──────────────┐
-│  Connecting  │  Establish MCP/WS connections
-└──────┬───────┘
-       │ start()
-       ▼
-┌────────────┐
-│   Running  │  Game loop active, accepting actions, emitting state
-└──────┬─────┘
-       │ suspend()
-       ▼
-┌─────────────┐
-│  Suspended  │  Paused, state preserved, no actions processed
-└──────┬──────┘
-       │ resume()
-       ▼
-┌────────────┐
-│   Running  │
-└──────┬─────┘
-       │ stop()
-       ▼
-┌────────────┐
-│  Stopping  │  Graceful shutdown, flush buffers
-└──────┬─────┘
-       │ dispose()
-       ▼
-┌──────────────┐
-│  Disposed    │  Resources released, process terminated
-└──────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                            ARENA                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                      GAME LIFECYCLE                           │   │
+│  │                                                               │   │
+│  │  Created ──► Initializing ──► Launching ──► Connecting       │   │
+│  │                                    │                           │   │
+│  │                                    ▼                           │   │
+│  │                              Running ◄──► Suspended           │   │
+│  │                                    │                           │   │
+│  │                                    ▼                           │   │
+│  │                              Stopping ──► Disposed            │   │
+│  │                                                               │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│         ▲                    ▲                    ▲                │
+│         │                    │                    │                │
+│    Arena calls          Arena calls         Arena calls         │
+│    initialize()         launch()            start()              │
+│    attachController()   attachObservation() suspend/resume()     │
+│    stop()               dispose()                                 │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -67,13 +47,12 @@ interface GameConfig {
   readonly seed?: number;
   readonly headless?: boolean;
   readonly config?: Record<string, unknown>;
-  readonly arenaId?: ArenaId;
-  readonly battleId?: BattleId;
+  readonly arenaId?: ArenaId;    // For context only — Game doesn't use this
+  readonly battleId?: BattleId;  // For context only — Game doesn't use this
 }
 ```
 
 **Responsibilities:**
-
 - Validate configuration
 - Prepare working directory
 - Download/verify assets if needed
@@ -81,7 +60,6 @@ interface GameConfig {
 - **Must not** start the game process
 
 **Errors:**
-
 - `InvalidConfigError` — Config validation failed
 - `AssetMissingError` — Required assets not found
 - `IncompatibleVersionError` — Engine version mismatch
@@ -102,14 +80,12 @@ interface GameProcess {
 ```
 
 **Responsibilities:**
-
 - Spawn native process (or connect to browser/WASM/remote)
 - Allocate controller/observation ports
 - Wait for `aga:ready` handshake
 - Return process handle with ports
 
 **Timeline:**
-
 ```
 T+0ms      spawn()
 T+50ms     process stdout: "aga:ready"
@@ -118,7 +94,6 @@ T+200ms    launch() resolves
 ```
 
 **Errors:**
-
 - `LaunchTimeoutError` — No ready signal within 30s
 - `PortConflictError` — Ports already in use
 - `ProcessSpawnError` — Executable not found, permissions
@@ -142,7 +117,6 @@ interface ControllerAdapter {
 ```
 
 **Responsibilities:**
-
 - Connect to game's controller port
 - Register action handlers
 - Set up state synchronization
@@ -167,7 +141,6 @@ interface ObservationAdapter {
 ```
 
 **Responsibilities:**
-
 - Connect to game's observation port
 - Register capture handlers
 - Set up streaming subscriptions
@@ -182,7 +155,6 @@ interface GameAdapter {
 ```
 
 **Responsibilities:**
-
 - Send `aga:start` to game
 - Begin game loop (if turn-based)
 - Enable action processing
@@ -197,7 +169,6 @@ interface GameAdapter {
 ```
 
 **Responsibilities:**
-
 - Send `aga:stop` to game
 - Wait for graceful shutdown (5s timeout)
 - Force kill if needed
@@ -213,7 +184,6 @@ interface GameAdapter {
 ```
 
 **Responsibilities:**
-
 - Send `aga:pause` to game
 - Pause game loop
 - Preserve all state
@@ -229,7 +199,6 @@ interface GameAdapter {
 ```
 
 **Responsibilities:**
-
 - Send `aga:resume` to game
 - Resume game loop
 - Resume action processing
@@ -244,7 +213,6 @@ interface GameAdapter {
 ```
 
 **Responsibilities:**
-
 - Call `stop()` if running
 - Terminate process
 - Close all connections
@@ -300,6 +268,8 @@ interface GameAdapter {
 ---
 
 ## Battle Integration
+
+The Arena orchestrates the Game through a `GameSession`:
 
 ```typescript
 // packages/runtime/src/battle/game-session.ts
@@ -443,8 +413,24 @@ export const GameConfigSchema = z.object({
 | AI decision logic | Belongs in AgentRuntime |
 | Controller implementation | Belongs in Controller package |
 | Observation processing | Belongs in Observation package |
-| Battle orchestration | Belongs in BattleManager |
+| Battle orchestration | Belongs in BattleManager (Arena) |
 | Plugin management | Belongs in PluginManager |
 | Networking (except adapter transport) | Transport only |
 | Persistence | Belongs in Storage package |
 | UI rendering | Belongs in Frontend |
+
+---
+
+## Testing Checklist
+
+- [ ] `initialize()` validates config correctly
+- [ ] `launch()` spawns process and waits for ready
+- [ ] `attachController()` connects to controller port
+- [ ] `attachObservation()` connects to observation port
+- [ ] `start()` begins game loop
+- [ ] `stop()` gracefully shuts down
+- [ ] `suspend()`/`resume()` preserve state
+- [ ] `dispose()` cleans up resources (idempotent)
+- [ ] Handles process crashes
+- [ ] Supports deterministic replay with same seed
+- [ ] Runs in headless mode for CI

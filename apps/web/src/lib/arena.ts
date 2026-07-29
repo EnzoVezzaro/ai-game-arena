@@ -323,6 +323,12 @@ export const EVENT_META: Record<string, { label: string; color: string; icon: st
   MATCH_ABORTED: { label: 'Aborted', color: '#f43f5e', icon: 'Octagon' },
   AGENT_JOINED: { label: 'Agent Joined', color: '#38bdf8', icon: 'LogIn' },
   AGENT_LEFT: { label: 'Agent Left', color: '#f43f5e', icon: 'LogOut' },
+  ThinkingStarted: { label: 'Thinking', color: '#fbbf24', icon: 'Brain' },
+  ThinkingFinished: { label: 'Decided', color: '#34d399', icon: 'Check' },
+  ToolCalled: { label: 'Tool', color: '#38bdf8', icon: 'Wrench' },
+  AgentError: { label: 'Error', color: '#f43f5e', icon: 'AlertTriangle' },
+  ActionRejected: { label: 'Rejected', color: '#f43f5e', icon: 'X' },
+  BattlePaused: { label: 'Paused', color: '#fbbf24', icon: 'Pause' },
 };
 
 export const BATTLE_STATUS: Record<

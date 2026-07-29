@@ -2,35 +2,55 @@
 
 > A **Game** is an adapter around a native application. Its responsibility is **not** to implement gameplay. The gameplay already exists inside the native game. The Game package simply exposes the minimum integration required for AI Game Arena to interact with it.
 
+The Game Adapter is a **component hosted inside an Arena**. The Arena launches the Game, connects Controllers and Observations to it, and orchestrates the battle. The Game knows nothing about the Arena, agents, spectators, plugins, overlays, chat, telemetry, or recordings.
+
 ---
 
 ## Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    AI Game Arena                             │
-├─────────────────────────────────────────────────────────────┤
-│  Battle Manager                                              │
-│       │                                                      │
-│       ▼                                                      │
-│  ┌──────────────┐    ┌──────────────────┐    ┌───────────┐  │
-│  │  Controller  │◄──►│   Game Adapter   │◄──►│ Observation│  │
-│  │   (MCP)      │    │  (Minimal Bridge)│    │  Adapter   │  │
-│  └──────────────┘    └────────┬─────────┘    └───────────┘  │
-│                               │                               │
-│                    ┌──────────┴──────────┐                   │
-│                    ▼                     ▼                   │
-│            ┌───────────────┐      ┌───────────────┐          │
-│            │ Native Input  │      │ Native Render │          │
-│            │    API        │      │    API        │          │
-│            └───────┬───────┘      └───────┬───────┘          │
-│                    │                     │                   │
-│                    ▼                     ▼                   │
-│            ┌─────────────────────────────────────┐          │
-│            │          Native Game                │          │
-│            │   (Chess, Minecraft, Browser, etc.) │          │
-│            └─────────────────────────────────────┘          │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                         AI Game Arena                                │
+├─────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                        ARENA                                  │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │   │
+│  │  │   Game       │  │  Spectators  │  │  Plugins     │       │   │
+│  │  │  (Adapter)   │  │  (Chat, UI)  │  │  (Tools)     │       │   │
+│  │  └──────┬───────┘  └──────────────┘  └──────────────┘       │   │
+│  │         │                                                      │   │
+│  │  ┌──────▼───────┐  ┌──────────────┐  ┌──────────────┐       │   │
+│  │  │  Overlays    │  │  Inspectors  │  │  Dashboards  │       │   │
+│  │  │  (HUD, Map)  │  │  (State, AI) │  │  (Metrics)   │       │   │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘       │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │   │
+│  │  │  Telemetry   │  │  Recordings  │  │  Battle      │       │   │
+│  │  │  & Events    │  │  & Replay    │  │  Lifecycle   │       │   │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘       │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│           │              │              │                          │
+│           ▼              ▼              ▼                          │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │                    GAME ADAPTER                              │  │
+│  │  ┌──────────────┐    ┌──────────────────┐    ┌───────────┐  │  │
+│  │  │  Controller  │◄──►│   Game Adapter   │◄──►│ Observation│  │  │
+│  │  │   (MCP)      │    │  (Minimal Bridge)│    │  Adapter   │  │  │
+│  │  └──────────────┘    └────────┬─────────┘    └───────────┘  │  │
+│  │                               │                               │  │
+│  │                    ┌──────────┴──────────┐                   │  │
+│  │                    ▼                     ▼                   │  │
+│  │            ┌───────────────┐      ┌───────────────┐          │  │
+│  │            │ Native Input  │      │ Native Render │          │  │
+│  │            │    API        │      │    API        │          │  │
+│  │            └───────┬───────┘      └───────┬───────┘          │  │
+│  │                    │                     │                   │  │
+│  │                    ▼                     ▼                   │  │
+│  │            ┌─────────────────────────────────────┐          │  │
+│  │            │          Native Game                │          │  │
+│  │            │   (Chess, Minecraft, Browser, etc.) │          │  │
+│  │            └─────────────────────────────────────┘          │  │
+│  └─────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -57,7 +77,9 @@ export interface GameAdapter {
   getMetadata(): GameMetadata;
   getCapabilities(): GameCapability[];
 }
+```
 
+```typescript
 export interface GameManifest {
   readonly id: string;
   readonly name: string;
@@ -340,15 +362,11 @@ export class NativeObservationAdapter implements ObservationAdapter {
   "engines": { "aga": "^1.0.0" },
   "entry": "./dist/index.js",
   "activation": { "startup": false },
-  "contributions": {
-    "games": ["my-game"]
-  },
+  "contributions": { "games": ["my-game"] },
   "launchConfig": {
     "command": "./my-game-executable",
     "args": ["--aga-mode", "--port=0"],
-    "env": {
-      "AGA_GAME_ID": "my-game"
-    },
+    "env": { "AGA_GAME_ID": "my-game" },
     "workingDirectory": "/opt/my-game",
     "ports": [
       { "name": "controller", "internal": 0, "protocol": "websocket" },
@@ -378,7 +396,7 @@ export class NativeObservationAdapter implements ObservationAdapter {
 games/
   my-game/
     game.json          # Manifest
-    package.json               # NPM package
+    package.json       # NPM package
     tsconfig.json
     src/
       index.ts                 # Export default MyGameAdapter
@@ -443,9 +461,9 @@ export class BrowserGameAdapter implements GameAdapter {
   }
 
   async attachController(adapter: ControllerAdapter): Promise<void> {
-    // Inject input handling
-    await this.cdpSession!.send('Input.dispatchMouseEvent', { ... });
-    await this.cdpSession!.send('Input.dispatchKeyEvent', { ... });
+    const browserAdapter = adapter as BrowserControllerAdapter;
+    browserAdapter.setPage(this.page!);
+    browserAdapter.setCDP(this.cdpSession!);
   }
 }
 ```
@@ -484,11 +502,8 @@ export class WasmGameAdapter implements GameAdapter {
   }
 
   async attachController(adapter: ControllerAdapter): Promise<void> {
-    // Expose controller functions to WASM
-    this.instance!.exports.set_controller = (actionPtr: number) => {
-      const action = this.readAction(actionPtr);
-      adapter.sendAction(action);
-    };
+    const wasmAdapter = adapter as WasmControllerAdapter;
+    wasmAdapter.setEngine(this.instance!.exports);
   }
 
   private createImports(): WebAssembly.Imports {

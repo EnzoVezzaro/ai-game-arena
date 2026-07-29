@@ -21,10 +21,11 @@ interface AgentRosterProps {
   agents: Agent[];
   units?: Unit[];
   scores?: Array<{ agent_id: string; score: number; hp?: number }>;
+  thinking?: Set<string>;
   className?: string;
 }
 
-export function AgentRoster({ agents, units = [], scores = [], className }: AgentRosterProps) {
+export function AgentRoster({ agents, units = [], scores = [], thinking, className }: AgentRosterProps) {
   const scoreFor = (id: string) =>
     scores.find((s) => s.agent_id === id)?.score ??
     units.find((u) => (u.agent_id || u.agentId) === id)?.score ??
@@ -44,17 +45,22 @@ export function AgentRoster({ agents, units = [], scores = [], className }: Agen
         );
         const hp = hpFor(agent.id);
         const alive = units.find((u) => (u.agent_id || u.agentId) === agent.id)?.alive !== false;
+        const isThinking = thinking?.has(agent.id);
         return (
           <div
             key={agent.id}
             className={cn(
               'rounded-xl border p-3 transition-all',
               alive ? 'glass border-border' : 'border-border/40 bg-muted/20 opacity-50',
+              isThinking && 'ring-2 ring-yellow-500/50 animate-pulse',
             )}
           >
             <div className="flex items-center gap-2.5">
               <div className="relative">
                 <AgentAvatar agent={agent} size="sm" />
+                {isThinking && (
+                  <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-yellow-400 animate-ping" />
+                )}
                 {!alive && (
                   <div className="absolute inset-0 rounded-xl bg-background/60 flex items-center justify-center">
                     <Icon name="Octagon" size={14} className="text-destructive" />
@@ -62,7 +68,12 @@ export function AgentRoster({ agents, units = [], scores = [], className }: Agen
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold truncate">{agent.name || agent.id}</div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold truncate">{agent.name || agent.id}</span>
+                  {isThinking && (
+                    <span className="font-mono text-[9px] text-yellow-400 animate-pulse">thinking…</span>
+                  )}
+                </div>
                 <div
                   className="flex items-center gap-1 font-mono text-[9px]"
                   style={{ color: strat.color }}

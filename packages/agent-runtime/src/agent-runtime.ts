@@ -104,14 +104,12 @@ export class AgentRuntime {
         };
       }
 
-      this.decisionHistory.push({ role: 'assistant', content: JSON.stringify(response.toolCalls) });
-
       try {
         const result = await this.mcpClient.callTool(toolCall.name, toolCall.parameters);
 
         this.decisionHistory.push({
-          role: 'tool',
-          content: JSON.stringify(result.content),
+          role: 'assistant',
+          content: `Called ${toolCall.name}(${JSON.stringify(toolCall.parameters)}) → ${JSON.stringify(result.content)}`,
         });
 
         return {
