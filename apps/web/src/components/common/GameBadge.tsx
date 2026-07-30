@@ -5,7 +5,7 @@ export interface Game {
   slug?: string;
   name?: string;
   icon?: string;
-  adapter?: string;
+  renderAdapter?: string;
   grid_size?: number;
   format?: string;
   version?: string;
@@ -45,7 +45,7 @@ export function GameBadge({ game, className, onClick }: GameBadgeProps) {
       <div className="min-w-0">
         <div className="text-sm font-medium truncate">{game.name || game.id}</div>
         <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-          {game.adapter || 'web'} · {game.grid_size || 8}×{game.grid_size || 8}
+          {game.renderAdapter || 'web'} · {game.grid_size || 8}×{game.grid_size || 8}
         </div>
       </div>
     </div>

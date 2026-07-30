@@ -126,7 +126,7 @@ function CreateGameModal({ open, onClose, onCreate, saving, setSaving }) {
       slug: slugify(name),
       version: version.trim() || "1.0.0",
       format,
-      adapter: gameFormatMeta(format).adapter,
+      renderAdapter: gameFormatMeta(format).adapter,
       grid_size: parseInt(grid) || 8,
       min_players: parseInt(minP) || 2,
       max_players: parseInt(maxP) || 4,

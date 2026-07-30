@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { strategyMeta, providerMeta } from '../lib/arena';
 import { Icon } from '../lib/Icon';
@@ -46,6 +46,45 @@ export function AgentDetail() {
   const [agent, setAgent] = useState<Agent | null>(null);
   const [battles, setBattles] = useState<BattleApi[]>([]);
   const [loading, setLoading] = useState(true);
+  const [healthResult, setHealthResult] = useState<{
+    ok: boolean;
+    error?: string;
+    providerType?: string;
+    response?: string;
+  } | null>(null);
+  const [testingHealth, setTestingHealth] = useState(false);
+
+  const checkHealth = useCallback(async () => {
+    if (!id) return;
+    setTestingHealth(true);
+    setHealthResult(null);
+    try {
+      const res = await fetch('/api/agents-health/health', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentIds: [id] }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as {
+        ok: boolean;
+        results: Array<{
+          agentId: string;
+          ok: boolean;
+          error?: string;
+          providerType?: string;
+          response?: string;
+        }>;
+      };
+      const r = data.results[0];
+      if (r) {
+        setHealthResult({ ok: r.ok, error: r.error, providerType: r.providerType, response: r.response });
+      }
+    } catch (err) {
+      setHealthResult({ ok: false, error: (err as Error).message });
+    } finally {
+      setTestingHealth(false);
+    }
+  }, [id]);
 
   useEffect(() => {
     let on = true;
@@ -157,7 +196,35 @@ export function AgentDetail() {
                   model: <span className="text-foreground/80">{agent.model || '—'}</span>
                 </span>
               </span>
+              <button
+                type="button"
+                onClick={checkHealth}
+                disabled={testingHealth}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/40 px-2 py-1 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors disabled:opacity-50"
+                title="Test provider connectivity"
+              >
+                <Icon
+                  name={testingHealth ? 'Loader' : 'Play'}
+                  size={11}
+                  className={testingHealth ? 'animate-spin' : ''}
+                />
+                {testingHealth ? 'Testing…' : 'Test'}
+              </button>
             </div>
+            {healthResult && (
+              <div
+                className={`mt-2 text-[11px] font-mono flex items-start gap-1.5 ${healthResult.ok ? 'text-success' : 'text-destructive'}`}
+              >
+                <Icon name={healthResult.ok ? 'Circle' : 'X'} size={11} className="mt-0.5 shrink-0" />
+                <span className="flex-1">
+                  {healthResult.ok
+                    ? healthResult.response
+                      ? `Response: "${healthResult.response}"`
+                      : 'Provider reachable'
+                    : `${healthResult.providerType ? `${healthResult.providerType}: ` : ''}${healthResult.error}`}
+                </span>
+              </div>
+            )}
           </div>
           <div className="text-right">
             <div className="font-display text-4xl font-bold text-primary text-glow">

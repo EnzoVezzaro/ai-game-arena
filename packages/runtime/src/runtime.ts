@@ -190,6 +190,12 @@ export class Runtime {
       battleId,
       observationSystem,
       adapterFactory: this.adapterFactory,
+      onAgentBlocked: async (agentId, error) => {
+        await this.storage.set(`agent-blocked:${agentId}`, { error, turn: session.matchEngine?.getState().currentTurn });
+      },
+      onAgentUnblocked: async (agentId) => {
+        await this.storage.delete(`agent-blocked:${agentId}`);
+      },
     });
 
     session.state.phase = 'running';

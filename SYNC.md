@@ -623,8 +623,8 @@ Each phase should be implemented in 1-3 sessions. Checkpoint after each: `bun ru
 | 9 | Controller (virtual input devices) | ✅ (does not implement SDK interface) |
 | 10 | Observation pipeline | ✅ (orphaned — not wired) |
 | 11 | Agent Runtime (4 memory compartments) | ✅ |
-| 12 | Battle Tanks arena | ✅ |
-| 13 | Chess arena | ✅ |
+| 12 | Battle arena | ✅ |
+| 13 | Custom arena | ✅ |
 | 14 | Server (Hono REST + WebSocket) | ✅ (partial routes) |
 | 15 | Web UI (React shell with regions) | ✅ |
 | 16 | CLI (arena run/plugin/arena/battle/agent/serve) | ✅ (partial) |

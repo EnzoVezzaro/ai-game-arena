@@ -4,17 +4,47 @@
 
 ---
 
+## ⚠️ FUNDAMENTAL PRINCIPLE: Arena ≠ Game
+
+**An Arena is a self-contained BATTLE ENVIRONMENT. It is NOT the Game.**
+
+| Arena (Environment) | Game (Native Adapter) |
+|---------------------|----------------------|
+| **Owns** the battle | **Is owned by** the battle |
+| **Contains** the Game | **Contained by** the Arena |
+| **Knows** everything about the battle | **Knows nothing** about the battle |
+| **Orchestrates** agents, spectators, plugins, UI | **Bridges** to native process only |
+| **Defines** world, rules, win conditions, scoring | **Exposes** native input/output |
+| **Renders** for spectators | **Renders** for itself (native) |
+| **Records** replays, telemetry, events | **Runs** the native executable |
+| **Multiple per Game** | **One per Arena instance** |
+
+**The Arena is the battlefield. The Game is just what's being played on it. They are architecturally separate.**
+
+The Game knows nothing about:
+- Spectators, chat, plugins, overlays
+- Telemetry, recordings, battle lifecycle
+- Agents, controllers, observations
+- Any other Arena systems
+
+The Game ONLY knows how to:
+- Start/stop the native process
+- Accept native input events
+- Produce native output (frames, accessibility tree, etc.)
+
+---
+
 ## Overview
 
-An **Arena** is a **self-contained battle environment**. It defines:
+An **Arena** defines a **battle environment**:
 
-1. **World logic** — Rules, physics, win conditions, scoring
+1. **World logic** — Environment rules, physics, win conditions, scoring
 2. **UI layout** — Panels, overlays, spectator experience
 3. **Capabilities** — What agents can do (via MCP tools)
 4. **Default configuration** — Game, plugins, strategies
 5. **Battle orchestration** — The Arena owns the battle lifecycle
 
-**The Arena is not the Game.** The Game is a native application adapter. The Arena *hosts* the Game and adds the environment layer. The Game knows nothing about the Arena's systems (spectators, chat, plugins, overlays, telemetry, recordings, etc.).
+**The Arena HOSTS the Game and adds the environment layer. The Game is a native application adapter. The Game knows NOTHING about the Arena's systems.**
 
 ---
 
@@ -27,12 +57,12 @@ my-arena/
 ├── tsconfig.json       # TypeScript config
 ├── src/
 │   ├── index.ts        # Export default
-│   ├── arena.ts        # ArenaPlugin implementation
-│   ├── state.ts        # WorldState, types
-│   ├── tools.ts        # ToolDefinitions (MCP)
-│   ├── validation.ts   # Action validation
-│   ├── scoring.ts      # Scoring, win conditions
-│   └── render.ts       # RenderState types
+│   ├── arena.ts        # ArenaPlugin implementation (ENVIRONMENT LOGIC ONLY)
+│   ├── state.ts        # WorldState, types (ARENA'S WORLD, NOT GAME'S)
+│   ├── tools.ts        # ToolDefinitions (MCP) — what agents can do HERE
+│   ├── validation.ts   # Action validation (against ARENA state)
+│   ├── scoring.ts      # Scoring, win conditions (ARENA rules)
+│   └── render.ts       # RenderState types (ARENA's view)
 ├── ui/                 # Frontend components (optional)
 │   ├── GridRenderer.tsx
 │   ├── Minimap.tsx
@@ -42,6 +72,8 @@ my-arena/
 │   └── fixtures/
 └── dist/               # Compiled output
 ```
+
+**Notice: No game logic here. No native process management. No controller logic. No observation capture. Pure environment.**
 
 ---
 
@@ -76,9 +108,11 @@ my-arena/
 }
 ```
 
+**Key: `"game": "my-game"` — This arena hosts the "my-game" Game adapter. Multiple arenas can host the same game.**
+
 ---
 
-## Step 2: Implement ArenaPlugin
+## Step 2: Implement ArenaPlugin (Pure Environment Logic)
 
 ```typescript
 // src/arena.ts
@@ -117,7 +151,7 @@ export class MyArena implements ArenaPlugin {
     capabilities: ['move', 'interact', 'scan'],
     display: {
       arena: {
-        game: 'my-game',
+        game: 'my-game',                    // ← DECLARES WHICH GAME THIS ARENA HOSTS
         plugins: ['plugin-chat'],
         defaultStrategies: ['explorer', 'builder'],
         mandatoryCapabilities: ['move'],
@@ -129,7 +163,8 @@ export class MyArena implements ArenaPlugin {
     },
   };
 
-  // Initialize world with optional seed for determinism
+  // Initialize ARENA world with optional seed for determinism
+  // THIS IS THE ARENA'S WORLD STATE — NOT THE GAME'S STATE
   initialize(seed?: number): WorldState {
     const rng = seed ? new SeededRandom(seed) : new MathRandom();
     
@@ -147,6 +182,7 @@ export class MyArena implements ArenaPlugin {
   }
 
   // Pure validation — no side effects
+  // VALIDATES AGAINST ARENA'S WORLD STATE
   validateAction(action: AgentAction, state: WorldState): ValidationResult {
     const entity = state.entities.get(action.agentId);
     if (!entity) return { valid: false, reason: 'Agent not found' };
@@ -164,6 +200,7 @@ export class MyArena implements ArenaPlugin {
   }
 
   // Pure execution — returns new state + events
+  // EXECUTES AGAINST ARENA'S WORLD STATE
   executeAction(action: AgentAction, state: WorldState): ActionOutcome {
     const validation = this.validateAction(action, state);
     if (!validation.valid) {
@@ -190,6 +227,7 @@ export class MyArena implements ArenaPlugin {
   }
 
   // Observation for specific agent
+  // WHAT THE AGENT CAN SEE IN THIS ARENA'S WORLD
   getObservation(agentId: string, state: WorldState): Observation {
     const entity = state.entities.get(agentId);
     if (!entity) {
@@ -216,7 +254,7 @@ export class MyArena implements ArenaPlugin {
     };
   }
 
-  // Win condition check
+  // Win condition check (ARENA RULES)
   checkWinCondition(state: WorldState): WinCondition | null {
     const alivePlayers = Array.from(state.players.values()).filter(p => p.alive);
     
@@ -238,7 +276,7 @@ export class MyArena implements ArenaPlugin {
     return null;
   }
 
-  // Scoring
+  // Scoring (ARENA RULES)
   getScores(state: WorldState): Record<string, number> {
     const scores: Record<string, number> = {};
     for (const [id, player] of state.players) {
@@ -247,7 +285,7 @@ export class MyArena implements ArenaPlugin {
     return scores;
   }
 
-  // Render state for UI
+  // Render state for UI (ARENA'S VIEW)
   getRenderState(state: WorldState): RenderState {
     return {
       tick: state.tick,
@@ -260,7 +298,7 @@ export class MyArena implements ArenaPlugin {
     };
   }
 
-  // MCP Tool definitions for agents
+  // MCP Tool definitions for agents (WHAT AGENTS CAN DO IN THIS ARENA)
   getTools(): ToolDefinition[] {
     return [
       {
@@ -300,7 +338,7 @@ export class MyArena implements ArenaPlugin {
     ];
   }
 
-  // Private implementation details
+  // Private implementation details (arena environment logic)
   private validateMove(action: AgentAction, entity: Entity, state: WorldState): ValidationResult {
     const target = action.params as MoveAction;
     const newPos = this.addDirection(entity.position, target.direction);
@@ -335,16 +373,34 @@ export class MyArena implements ArenaPlugin {
     });
   }
 
-  // ... other private methods
+  // ... other private methods (terrain generation, visibility, etc.)
 }
 
 // Export default for plugin loader
 export default new MyArena();
 ```
 
+**THIS IS PURE ARENA LOGIC:**
+- World state management (arena's world)
+- Action validation (arena's rules)
+- Action execution (arena's state changes)
+- Observations (what agents see in arena)
+- Win conditions (arena's victory rules)
+- Scoring (arena's scoring rules)
+- Rendering (arena's visual representation)
+- Tools (what agents can do in arena)
+
+**NOT HERE:**
+- ❌ Game process management
+- ❌ Native input/output bridging
+- ❌ AI/LLM reasoning
+- ❌ Controller/MCP server logic
+- ❌ Observation capture from native game
+- ❌ Network/protocol handling
+
 ---
 
-## Step 3: Define World State
+## Step 3: Define World State (Arena's World)
 
 ```typescript
 // src/state.ts
@@ -419,6 +475,8 @@ export interface Resource {
 export type ResourceType = 'energy' | 'material' | 'data' | 'artifact';
 ```
 
+**This is the ARENA's world state. The Game has its own internal native state.**
+
 ---
 
 ## Step 4: Frontend Components (Optional)
@@ -475,7 +533,6 @@ export function Minimap() {
 ```
 
 **Register components in manifest:**
-
 ```json
 {
   "display": {
@@ -529,7 +586,7 @@ cp -r /path/to/my-arena /path/to/ai-game-arena/arenas/my-arena
 
 ---
 
-## Step 6: Test
+## Step 6: Test (Arena Logic Only)
 
 ```typescript
 // tests/arena.test.ts
@@ -550,7 +607,7 @@ describe('MyArena', () => {
     expect(state).toEqual(state2);
   });
 
-  it('validates move actions', () => {
+  it('validates move actions against environment', () => {
     const action = { type: 'move', agentId: 'agent-1', payload: { direction: 'north' } };
     const result = arena.validateAction(action, state);
     expect(result.valid).toBe(true);
@@ -564,7 +621,7 @@ describe('MyArena', () => {
     expect(result.valid).toBe(false);
   });
 
-  it('executes moves and emits events', () => {
+  it('executes moves and emits environment events', () => {
     const action = { type: 'move', agentId: 'agent-1', payload: { direction: 'north' } };
     const outcome = arena.executeAction(action, state);
     expect(outcome.success).toBe(true);
@@ -573,7 +630,7 @@ describe('MyArena', () => {
     );
   });
 
-  it('detects victory', () => {
+  it('detects victory (arena win condition)', () => {
     state.players.set('agent-1', createPlayer('agent-1', 1000));
     state.players.set('agent-2', createPlayer('agent-2', 0, false));
     const win = arena.checkWinCondition(state);
@@ -581,6 +638,8 @@ describe('MyArena', () => {
   });
 });
 ```
+
+**Test the Arena's environment logic in isolation. The Game is NOT involved.**
 
 ---
 
@@ -614,6 +673,10 @@ An arena can support multiple games by declaring different configurations:
 }
 ```
 
+**Same arena code, different game declared in manifest.**
+
+---
+
 ### Dynamic UI Based on Game State
 
 ```typescript
@@ -631,7 +694,9 @@ getUiContributions(): ArenaUiContribution[] {
 }
 ```
 
-### Custom Capabilities
+---
+
+### Custom Capabilities (What Agents Can Do In This Arena)
 
 ```typescript
 // In arena.ts
@@ -682,7 +747,7 @@ npm install @my-org/aga-arena-my-arena
 aga plugin install @my-org/aga-arena-my-arena
 ```
 
-**Manifest discovery works automatically** — no registration needed.
+**Manifest discovery works automatically — no registration needed.**
 
 ---
 
@@ -698,7 +763,7 @@ aga arena list
 # View arena manifest
 aga arena show my-arena
 
-# Test arena in isolation
+# Test arena in isolation (no game involved)
 aga arena test my-arena --seed 42 --turns 10
 ```
 
@@ -714,3 +779,12 @@ aga arena test my-arena --seed 42 --turns 10
 | Missing win condition | Always implement `checkWinCondition` |
 | UI component not found | Register component in frontend plugin; match manifest `component` name exactly |
 | Capability not available to agents | Declare in `capabilities` array AND `mandatoryCapabilities` or `specialSkills` |
+| **Putting game logic in arena** | **Don't. Game logic goes in the Game adapter. Arena = environment only.** |
+| **Making arena depend on game** | **Never. Arena declares game ID in manifest. That's the only coupling.** |
+| **Arena knowing about agents/LLMs** | **Arena defines tools/capabilities. Agent runtime handles LLM reasoning.** |
+
+---
+
+## The Golden Rule
+
+> **If you're writing code that manages a native process, bridges native input/output, or handles AI reasoning — STOP. That's Game/Controller/Observation/Agent logic. The Arena is the ENVIRONMENT. Nothing more, nothing less.**

@@ -10,6 +10,7 @@ interface AgentApi {
   id: string;
   name?: string;
   config?: Record<string, unknown>;
+  blocked?: { error: string; turn: number } | null;
 }
 
 interface AgentForm {
@@ -50,12 +51,16 @@ function mapAgent(a: AgentApi): Agent {
     provider,
     description: cfg.backstory,
     config: a.config,
+    blocked: a.blocked ?? null,
   };
 }
 
 export function Agents() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [healthStatuses, setHealthStatuses] = useState<
+    Record<string, { ok: boolean; error?: string }>
+  >({});
   const [strat, setStrat] = useState<string>('all');
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<AgentForm>(EMPTY_FORM);
@@ -74,9 +79,38 @@ export function Agents() {
       .finally(() => setLoading(false));
   }, []);
 
+  const checkHealth = useCallback(async () => {
+    if (!agents.length) return;
+    try {
+      const res = await fetch('/api/agents-health/health', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentIds: agents.map((a) => a.id) }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        ok: boolean;
+        results: Array<{ agentId: string; ok: boolean; error?: string }>;
+      };
+      const statuses: Record<string, { ok: boolean; error?: string }> = {};
+      for (const r of data.results) {
+        statuses[r.agentId] = { ok: r.ok, error: r.error };
+      }
+      setHealthStatuses(statuses);
+    } catch {
+      // Silently ignore health check failures
+    }
+  }, [agents]);
+
   useEffect(() => {
     loadAgents();
   }, [loadAgents]);
+
+  useEffect(() => {
+    if (agents.length > 0) {
+      void checkHealth();
+    }
+  }, [agents, checkHealth]);
 
   const filtered = useMemo(
     () => (strat === 'all' ? agents : agents.filter((a) => a.strategy === strat)),
@@ -213,7 +247,10 @@ export function Agents() {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((a) => (
-          <AgentCard key={a.id} agent={a} />
+          <AgentCard
+            key={a.id}
+            agent={{ ...a, healthStatus: healthStatuses[a.id] }}
+          />
         ))}
       </div>
       {filtered.length === 0 && (

@@ -756,9 +756,73 @@ export class Battle extends EventSourcedAggregate {
 
 ## Arena System
 
-The **Arena is the environment**. It is **not** the game. The Arena hosts games, spectators, overlays, chat, inspectors, timelines, dashboards, plugins, and developer tools.
+> ⚠️ **CRITICAL ARCHITECTURAL PRINCIPLE: THE ARENA IS THE ENVIRONMENT. IT IS NOT THE GAME.**
+> 
+> **There is ZERO architectural dependency between Arena and Game beyond composition.**
+> - The Arena **CONTAINS** a Game.
+> - The Game does **NOT** contain or manage an Arena.
+> - The Game **MUST NOT** know about ANY Arena systems (spectators, chat, plugins, overlays, telemetry, recordings, battle lifecycle, agents, controllers, observations, or any other arena concern).
+> - The Arena **ORCHESTRATES** the battle. The Game **EXECUTES** native code.
+> - Different Arenas can host the SAME Game. One Game can run in MANY Arenas.
 
-The Game occupies one area of the Arena. Different Arenas can host the same Game.
+---
+
+### The Arena Is The Battle Environment
+
+The **Arena is a self-contained battle ENVIRONMENT**. It owns everything required for the battle:
+- **Layout/World** — The physical/virtual space where the battle occurs (grid, terrain, entities, physics)
+- **Agents** — AI minds participating in the battle
+- **Spectators** — Human viewers, chat, polls, dashboards
+- **Plugins** — Chat, polls, rewards, metrics, analytics, export
+- **Overlays** — HUD, minimap, tactical views, spectator tools
+- **Telemetry & Events** — Complete event stream for replay, debugging, analysis
+- **Recordings & Replay** — Full deterministic replay capability
+- **Battle Lifecycle** — Turn management, win conditions, scoring, phase transitions
+- **UI Layout** — Panels, sidebars, event logs, scoreboards, inspectors
+
+**The Game is merely ONE COMPONENT hosted inside the Arena.** It occupies one area (the "game panel"). The Arena does not care what the Game is — it only knows the Game's ID (declared in the manifest) and how to launch/attach to it.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                                    ARENA                                            │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐   │
+│  │                         BATTLE ENVIRONMENT                                    │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │   │
+│  │  │   Arena      │  │  Spectators  │  │   Plugins    │  │  Battle      │    │   │
+│  │  │  Layout/     │  │  (Chat, UI)  │  │  (Tools)     │  │  Lifecycle   │    │   │
+│  │  │  Environment │  │              │  │              │  │  (Turns, Win   │    │   │
+│  │  │  (World)     │  │              │  │              │  │   Conditions) │    │   │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘    │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │   │
+│  │  │  Overlays    │  │  Inspectors  │  │  Dashboards  │  │  Telemetry   │    │   │
+│  │  │  (HUD, Map)  │  │  (State, AI) │  │  (Metrics)   │  │  & Events    │    │   │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘    │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │   │
+│  │  │  Recordings  │  │   Agents     │  │    Game      │  │  Scoring     │    │   │
+│  │  │  & Replay    │  │  (AI Minds)  │  │  (Component) │  │  & Win Cond  │    │   │
+│  │  └──────────────┘  └──────────────┘  └──────┬───────┘  └──────────────┘    │   │
+│  └───────────────────────────────────────────────┼──────────────────────────────┘   │
+└──────────────────────────────────────────────────┼───────────────────────────────────┘
+                                                   │
+                                                   ▼
+                                    ┌─────────────────────────────┐
+                                    │         GAME                │
+                                    │  (Native Application)       │
+                                    │  ┌──────────────────────┐   │
+                                    │  │  Controller Adapter  │   │
+                                    │  │  Observation Adapter │   │
+                                    │  │  Process Management  │   │
+                                    │  └──────────────────────┘   │
+                                    └─────────────────────────────┘
+                                                   │
+                                    ┌──────────────┴──────────────┐
+                                    │    Native Game Binary       │
+                                    │    (e.g., Battle Tanks,     │
+                                    │     Chess Engine, etc.)     │
+                                    └─────────────────────────────┘
+```
+
+**THE ARENA DOES NOT KNOW GAME LOGIC. THE GAME DOES NOT KNOW THE ARENA EXISTS.**
 
 ### Arena Manifest
 
@@ -817,15 +881,15 @@ export interface ArenaPlugin {
   initialize(seed?: number): WorldState;
   shutdown(): Promise<void>;
 
-  // Game logic (pure functions)
-  getTools(): ToolDefinition[];
+  // Environment logic (pure functions) — THIS IS ARENA LOGIC, NOT GAME LOGIC
+  getTools(): ToolDefinition[];                    // What agents CAN DO in this environment
   validateAction(action: AgentAction, state: WorldState): ValidationResult;
   executeAction(action: AgentAction, state: WorldState): ActionOutcome;
   getObservation(agentId: string, state: WorldState): Observation;
   checkWinCondition(state: WorldState): WinCondition | null;
   getScores(state: WorldState): Record<string, number>;
 
-  // Rendering
+  // Rendering (arena's view of the world)
   getRenderState(state: WorldState): RenderState;
 
   // Optional: custom UI contributions
@@ -841,6 +905,22 @@ export interface ArenaConfig {
   readonly maxPlayers: number;
 }
 ```
+
+**The ArenaPlugin implements the ENVIRONMENT'S world simulation:**
+- World state management (entities, grid, physics, terrain)
+- Action validation against environment rules
+- Action execution producing environment events
+- Observations (what agents perceive in THIS environment)
+- Win conditions (environment victory rules)
+- Scoring (environment scoring rules)
+- Render state (how the environment looks to spectators)
+
+**The ArenaPlugin does NOT contain:**
+- Native game process management
+- Controller/MCP logic
+- AI reasoning / LLM calls
+- Observation capture from native game
+- Network/protocol handling
 
 ### Arena Container
 

@@ -12,10 +12,25 @@ export function createAgentRoutes(container: Container) {
     const agents = await storage.all<{ id: string; name: string; config: string }>(
       'SELECT * FROM agents ORDER BY name',
     );
+    const blockedMap = new Map<string, { error: string; turn: number }>();
+    const blockedResults = await Promise.all(
+      agents.map((a) =>
+        storage.getOne<{ value: string }>(
+          'SELECT value FROM kv_store WHERE key = ?',
+          [`agent-blocked:${a.id}`],
+        ),
+      ),
+    );
+    for (let i = 0; i < agents.length; i++) {
+      if (blockedResults[i]) {
+        blockedMap.set(agents[i]!.id, JSON.parse(blockedResults[i]!.value));
+      }
+    }
     return c.json(
       agents.map((a) => ({
         ...a,
         config: JSON.parse(a.config),
+        blocked: blockedMap.get(a.id) ?? null,
       })),
     );
   });
@@ -43,9 +58,14 @@ export function createAgentRoutes(container: Container) {
     if (!agent) {
       return c.json({ error: 'Agent not found' }, 404);
     }
+    const blocked = await storage.getOne<{ value: string }>(
+      'SELECT value FROM kv_store WHERE key = ?',
+      [`agent-blocked:${id}`],
+    );
     return c.json({
       ...agent,
       config: JSON.parse(agent.config),
+      blocked: blocked ? JSON.parse(blocked.value) : null,
     });
   });
 

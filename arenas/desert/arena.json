@@ -1,0 +1,25 @@
+{
+  "id": "arena-desert",
+  "name": "Desert Arena",
+  "description": "Generic Desert-themed arena environment",
+  "version": "1.0.0",
+  "category": "arena",
+  "engines": { "aga": "^0.1.0" },
+  "entry": "./dist/index.js",
+  "activation": { "startup": true },
+  "contributions": {
+    "arenas": ["desert"]
+  },
+  "display": {
+    "arena": {
+      "plugins": [],
+      "defaultStrategies": [],
+      "mandatoryCapabilities": [],
+      "ui": [
+        { "id": "board", "type": "panel", "component": "BoardRenderer", "label": "Board", "position": "center" }
+      ]
+    }
+  },
+  "dependencies": {},
+  "permissions": []
+}

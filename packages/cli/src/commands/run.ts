@@ -8,7 +8,7 @@ import type { AgentConfig } from '@ai-game-arena/sdk';
 export async function runCommand(rawArgs: string[]) {
   const args = parseArgs(rawArgs);
 
-  const arenaId = (args.arena as string) || 'battle-tanks';
+  const arenaId = (args.arena as string) || 'desert';
   const agentNames = (args.agents as string)?.split(',') || ['aggressive', 'defensive'];
   // Allow --names to override per-agent display names (comma-separated list)
   const customDisplayNames = (args.names as string)?.split(',');

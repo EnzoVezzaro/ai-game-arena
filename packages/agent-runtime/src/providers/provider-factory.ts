@@ -3,7 +3,6 @@ import { OpenAIProvider } from './openai-provider';
 import { OllamaProvider } from './ollama-provider';
 import { AnthropicProvider } from './anthropic-provider';
 import { GoogleProvider } from './google-provider';
-import { MockProvider } from './mock-provider';
 import type { LLMProvider } from './llm-provider';
 
 export function createProvider(config: ProviderConfig | undefined): LLMProvider {
@@ -61,8 +60,7 @@ export function createProvider(config: ProviderConfig | undefined): LLMProvider 
         ...config,
         baseUrl: baseUrl || 'http://localhost:8000/v1',
       } as ProviderConfig);
-    case 'none':
     default:
-      return new MockProvider();
+      throw new Error('No LLM provider configured');
   }
 }

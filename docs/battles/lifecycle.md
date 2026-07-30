@@ -1,40 +1,63 @@
 # Battle Lifecycle
 
-> A Battle is the executable unit of the platform — isolated, reproducible, observable, recordable, and benchmarkable. Battles run **inside an Arena**.
+> A Battle is the executable unit of the platform — isolated, reproducible, observable, recordable, and benchmarkable. Battles run **inside an Arena** (the environment).
 
 ---
 
-## Overview
+## ⚠️ CRITICAL: Battle Runs INSIDE an Arena (Environment), Not Inside a Game
+
+The **Arena is the battle environment** — the battlefield, the layout, the place where interactions happen. The **Game is just a component** loaded INTO the Arena.
+
+**The Agent executes actions via Controller/MCP directly on the Game. The Arena only observes and reacts.**
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                            ARENA                                     │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                        BATTLE                                  │   │
-│  ├─────────────────────────────────────────────────────────────┤   │
-│  │  ┌──────────┐  ┌──────────┐  ┌────────────┐  ┌────────────┐ │   │
-│  │  │  Arena   │  │   Game   │  │ Controllers│  │   Agents   │ │   │
-│  │  │(Environment)│ (Adapter) │  │ (MCP Server)│  │ (AI Minds) │ │   │
-│  │  └────┬─────┘  └────┬─────┘  └─────┬──────┘  └──────┬───────┘ │   │
-│  │       │             │              │                │          │   │
-│  │       └─────────────┼──────────────┼────────────────┘          │   │
-│  │                     ▼              ▼                           │   │
-│  │            ┌──────────────────────────────┐                   │   │
-│  │            │      Battle Orchestrator     │                   │   │
-│  │            │  - Turn management           │                   │   │
-│  │            │  - Agent coordination        │                   │   │
-│  │            │  - Event emission            │                   │   │
-│  │            │  - Replay recording          │                   │   │
-│  │            └──────────────────────────────┘                   │   │
-│  │                     │                                        │   │
-│  │                     ▼                                        │   │
-│  │            ┌──────────────────┐                              │   │
-│  │            │  Observation     │                              │   │
-│  │            │  Pipeline        │                              │   │
-│  │            └──────────────────┘                              │   │
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                                    ARENA (ENVIRONMENT)                              │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐   │
+│  │                         BATTLE                                              │   │
+│  ├─────────────────────────────────────────────────────────────────────────────┤   │
+│  │  ┌──────────────────┐  ┌──────────────┐  ┌──────────────────────────────┐  │   │
+│  │  │   Arena          │  │    Game      │  │    Controllers (MCP)         │  │   │
+│  │  │ (Environment)    │  │  (Adapter)   │  │   (Agent's body)             │  │   │
+│  │  └────────┬─────────┘  └──────┬───────┘  └──────────────┬──────────────┘  │   │
+│  │           │                   │                          │                 │   │
+│  │           │                   ▼                          ▼                 │   │
+│  │           │  ┌──────────────────────────────────────────────────────┐    │   │
+│  │           │  │                   GAME (Native Binary)              │    │   │
+│  │           │  │         (Agent → Controller → Game)                  │    │   │
+│  │           │  └──────────────────────────────────────────────────────┘    │   │
+│  │           │                   │                          ▲                 │   │
+│  │           │                   ▼                          │                 │   │
+│  │           │  ┌──────────────────────────────────────────────────────┐    │   │
+│  │           │  │              OBSERVER                                │    │   │
+│  │           │  │         (Captures Game output)                       │    │   │
+│  │           │  └──────────────────────────────────────────────────────┘    │   │
+│  │           │                   │                          │                 │   │
+│  │           │           ┌───────┴───────┐                  │                 │   │
+│  │           ▼           ▼               ▼                  │                 │   │
+│  │  ┌─────────────────────────────────────────────────────────────┐          │   │
+│  │  │              BATTLE ORCHESTRATOR                             │          │   │
+│  │  │  - Turn management (coordinates Agent turns)                │          │   │
+│  │  │  - Agent coordination (calls Agent Runtime)                 │          │   │
+│  │  │  - Observation (Arena calls getObservation from Observer)   │          │   │
+│  │  │  - World state updates (Arena reacts via executeAction)     │          │   │
+│  │  │  - Win condition checks (Arena checks checkWinCondition)    │          │   │
+│  │  │  - Event emission & replay recording                         │          │   │
+│  │  └─────────────────────────────────────────────────────────────┘          │   │
 │  └─────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
+└─────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+**KEY INSIGHT:** The Battle Orchestrator runs INSIDE the Arena. It coordinates the flow:
+1. **Agent decides** (via Agent Runtime/LLM)
+2. **Agent executes** via Controller/MCP → Game (Arena NOT involved)
+3. **Game runs** natively
+4. **Observer captures** Game output
+5. **Arena observes** (calls `getObservation()` from Observer data)
+6. **Arena reacts** (updates world state via `executeAction()`, checks `checkWinCondition()`)
+7. **Orchestrator** emits events, advances turn
+
+The Game adapter is just a component the Arena launches/stops. The Game NEVER calls into the Arena. The Arena calls into the Game only to launch/stop it.
 
 ---
 
@@ -72,7 +95,7 @@
 }
 ```
 
-> **Note:** `maxTurns` and `turnTimeout` are intentionally omitted from the request the frontend sends. The runtime defaults `maxTurns` to `Infinity` and `turnTimeout` to `0` — battles run until the arena's win condition fires, or until an admin pauses/resumes/aborts. The only latency bound is the provider retry policy inside the agent runtime (the agent's LLM call is retried a small number of times before the agent is treated as non-functional and the battle aborts). `seed` is auto-generated server-side for reproducible replays; clients may override it only for deterministic test suites.
+> **Note:** `maxTurns` and `turnTimeout` are intentionally omitted from the request the frontend sends. The runtime defaults `maxTurns` to `Infinity` and `turnTimeout` to `0` — battles run until the **Arena's win condition** fires, or until an admin pauses/resumes/aborts. The only latency bound is the provider retry policy inside the agent runtime (the agent's LLM call is retried a small number of times before the agent is treated as non-functional and the battle aborts). `seed` is auto-generated server-side for reproducible replays; clients may override it only for deterministic test suites.
 
 ---
 

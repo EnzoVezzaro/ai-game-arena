@@ -1,0 +1,25 @@
+{
+  "id": "arena-temple",
+  "name": "Temple Arena",
+  "description": "Generic Temple-themed arena environment (stub)",
+  "version": "1.0.0",
+  "category": "arena",
+  "engines": { "aga": "^0.1.0" },
+  "entry": "./dist/index.js",
+  "activation": { "startup": true },
+  "contributions": {
+    "arenas": ["temple"]
+  },
+  "display": {
+    "arena": {
+      "plugins": [],
+      "defaultStrategies": [],
+      "mandatoryCapabilities": [],
+      "ui": [
+        { "id": "board", "type": "panel", "component": "UnityRenderer", "label": "Board", "position": "center" }
+      ]
+    }
+  },
+  "dependencies": {},
+  "permissions": []
+}

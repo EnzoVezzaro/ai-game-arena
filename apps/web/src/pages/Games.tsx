@@ -30,7 +30,7 @@ const toGame = (g: ApiGame): Game => ({
   version: g.version,
   description: g.description,
   format: g.format ?? g.adapterType ?? 'native',
-  adapter: g.adapterType ?? g.format ?? 'native',
+  renderAdapter: g.adapterType ?? g.format ?? 'native',
   icon: g.icon,
   grid_size: g.grid_size,
   min_players: g.min_players,

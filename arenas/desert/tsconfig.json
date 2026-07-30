@@ -5,8 +5,5 @@
     "rootDir": "./src"
   },
   "include": ["src/**/*"],
-  "references": [
-    { "path": "../../packages/sdk" },
-    { "path": "../../games/chess" }
-  ]
+  "references": [{ "path": "../../packages/sdk" }]
 }

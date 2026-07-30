@@ -1,0 +1,25 @@
+{
+  "id": "arena-fun",
+  "name": "Fun Arena",
+  "description": "Generic Fun-themed arena environment",
+  "version": "1.0.0",
+  "category": "arena",
+  "engines": { "aga": "^0.1.0" },
+  "entry": "./dist/index.js",
+  "activation": { "startup": true },
+  "contributions": {
+    "arenas": ["fun"]
+  },
+  "display": {
+    "arena": {
+      "plugins": [],
+      "defaultStrategies": [],
+      "mandatoryCapabilities": [],
+      "ui": [
+        { "id": "board", "type": "panel", "component": "CanvasRenderer", "label": "Board", "position": "center" }
+      ]
+    }
+  },
+  "dependencies": {},
+  "permissions": []
+}

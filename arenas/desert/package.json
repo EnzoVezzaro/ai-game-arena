@@ -1,5 +1,5 @@
 {
-  "name": "battle-tanks-arena",
+  "name": "arena-desert",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -16,7 +16,6 @@
     "typecheck": "bun x tsc --noEmit"
   },
   "dependencies": {
-    "battle-tanks": "workspace:*",
     "@ai-game-arena/sdk": "workspace:*"
   },
   "devDependencies": {

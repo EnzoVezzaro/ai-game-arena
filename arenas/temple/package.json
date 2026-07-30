@@ -1,5 +1,5 @@
 {
-  "name": "battle-royale-arena",
+  "name": "arena-temple",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -16,7 +16,6 @@
     "typecheck": "bun x tsc --noEmit"
   },
   "dependencies": {
-    "battle-royale": "workspace:*",
     "@ai-game-arena/sdk": "workspace:*"
   },
   "devDependencies": {

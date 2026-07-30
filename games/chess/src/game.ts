@@ -30,7 +30,7 @@ export function createInitialState(_seed?: number, _agentIds?: string[]): ChessS
 }
 
 export function validateAction(action: AgentAction, state: ChessState): ValidationResult {
-  if (action.type === 'pass') return { valid: true };
+  if (action.type === 'pass') return { valid: false, error: 'Cannot pass in chess — you must make a move' };
   if (action.type === 'move_piece') {
     const { fromRow, fromCol, toRow, toCol } = action.parameters as { fromRow: number; fromCol: number; toRow: number; toCol: number };
     if (fromRow < 0 || fromRow > 7 || fromCol < 0 || fromCol > 7 || toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7)
@@ -99,6 +99,95 @@ export function getScores(state: ChessState): Record<string, number> {
     }
   }
   return scores;
+}
+
+export function getLegalMoves(board: (ChessPiece | null)[][], row: number, col: number): Array<{ row: number; col: number; capture: boolean }> {
+  const piece = board[row]?.[col];
+  if (!piece) return [];
+
+  const color = piece.color;
+  const enemy = color === 'white' ? 'black' : 'white';
+  const moves: Array<{ row: number; col: number; capture: boolean }> = [];
+  const inBounds = (r: number, c: number) => r >= 0 && r <= 7 && c >= 0 && c <= 7;
+  const occupied = (r: number, c: number) => {
+    const p = board[r]?.[c];
+    return p != null;
+  };
+  const enemyAt = (r: number, c: number) => {
+    const p = board[r]?.[c];
+    return p?.color === enemy;
+  };
+  const addIf = (r: number, c: number) => {
+    if (!inBounds(r, c)) return false;
+    if (enemyAt(r, c)) {
+      moves.push({ row: r, col: c, capture: true });
+      return false;
+    }
+    if (occupied(r, c)) return false;
+    moves.push({ row: r, col: c, capture: false });
+    return true;
+  };
+  const dirs = (deltas: Array<[number, number]>, single = true) => {
+    for (const [dr, dc] of deltas) {
+      if (single) {
+        addIf(row + dr, col + dc);
+      } else {
+        for (let i = 1; i < 8; i++) {
+          if (!addIf(row + dr * i, col + dc * i)) break;
+        }
+      }
+    }
+  };
+
+  switch (piece.type) {
+    case 'pawn': {
+      const forward = color === 'white' ? -1 : 1;
+      const startRow = color === 'white' ? 6 : 1;
+      if (inBounds(row + forward, col) && !occupied(row + forward, col)) {
+        moves.push({ row: row + forward, col, capture: false });
+        if (row === startRow && !occupied(row + 2 * forward, col)) {
+          moves.push({ row: row + 2 * forward, col, capture: false });
+        }
+      }
+      for (const dc of [-1, 1]) {
+        if (inBounds(row + forward, col + dc) && enemyAt(row + forward, col + dc)) {
+          moves.push({ row: row + forward, col: col + dc, capture: true });
+        }
+      }
+      break;
+    }
+    case 'knight':
+      dirs([
+        [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+        [1, -2], [1, 2], [2, -1], [2, 1],
+      ]);
+      break;
+    case 'bishop':
+      dirs([[-1, -1], [-1, 1], [1, -1], [1, 1]], false);
+      break;
+    case 'rook':
+      dirs([[-1, 0], [1, 0], [0, -1], [0, 1]], false);
+      break;
+    case 'queen':
+      dirs(
+        [
+          [-1, -1], [-1, 0], [-1, 1],
+          [0, -1], [0, 1],
+          [1, -1], [1, 0], [1, 1],
+        ],
+        false,
+      );
+      break;
+    case 'king':
+      dirs([
+        [-1, -1], [-1, 0], [-1, 1],
+        [0, -1], [0, 1],
+        [1, -1], [1, 0], [1, 1],
+      ]);
+      break;
+  }
+
+  return moves;
 }
 
 export function serializeBoard(board: (ChessPiece | null)[][]): string[][] {

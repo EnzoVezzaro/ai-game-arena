@@ -23,7 +23,7 @@ export interface MatchEngineConfig {
 }
 
 export interface MatchEngineState {
-  phase: 'waiting' | 'running' | 'completed' | 'aborted';
+  phase: 'waiting' | 'running' | 'paused' | 'completed' | 'aborted';
   currentTurn: number;
   worldState: WorldState | null;
   scores: Record<string, number>;
@@ -55,6 +55,8 @@ export interface MatchEngineOptions {
   observationFilter?: (observation: Observation, agentId: string) => Observation;
   observationSystem?: ObservationSystem;
   adapterFactory?: (arenaId: string, agentId: string) => GameAdapter | null;
+  onAgentBlocked?: (agentId: string, error: string) => void;
+  onAgentUnblocked?: (agentId: string) => void;
 }
 
 function createNoopLogger(): Logger {
@@ -99,6 +101,9 @@ export class MatchEngine {
   private adapterFactory?: (arenaId: string, agentId: string) => GameAdapter | null;
   private gameAdapters: Map<string, GameAdapter> = new Map();
   private agentErrors: Map<string, { category: ErrorCategory; message: string; turn: number }> = new Map();
+  private agentRetries: Map<string, number> = new Map();
+  private onAgentBlocked?: (agentId: string, error: string) => void;
+  private onAgentUnblocked?: (agentId: string) => void;
 
   constructor(
     arena: ArenaPlugin,
@@ -116,6 +121,8 @@ export class MatchEngine {
     this.observationSystem = options?.observationSystem;
     this.adapterFactory = options?.adapterFactory;
     this.battleId = options?.battleId ?? `match-${this.config.seed}`;
+    this.onAgentBlocked = options?.onAgentBlocked;
+    this.onAgentUnblocked = options?.onAgentUnblocked;
     this.state = {
       phase: 'waiting',
       currentTurn: 0,
@@ -150,32 +157,11 @@ export class MatchEngine {
         name: `Controller for ${agent.name}`,
       });
 
-      // Create a game adapter if available, otherwise register arena tools as raw tools
+      // Create a game adapter and register its tools with the controller
       const adapter = this.createAdapterForAgent(agent);
       if (adapter) {
         adapter.registerTools(controller);
         this.gameAdapters.set(agent.id, adapter);
-      } else {
-        // Fallback: register arena tools as raw MCP tools (semantic action mode)
-        for (const tool of this.arena.getTools()) {
-          controller.registerTool(
-            tool.name,
-            tool.description,
-            Object.fromEntries(
-              tool.parameters.map((parameter) => [
-                parameter.name,
-                {
-                  type: parameter.type,
-                  description: parameter.description,
-                  required: parameter.required,
-                },
-              ]),
-            ),
-            async (_args) => ({
-              content: [{ type: 'text', text: `${tool.name} submitted` }],
-            }),
-          );
-        }
       }
 
       const runtime = new AgentRuntime({
@@ -361,16 +347,24 @@ export class MatchEngine {
             metadata: { correlationId: this.battleId, version: 1 },
           });
 
-          if (NON_RECOVERABLE.has(category) && this.allAgentsHaveNonRecoverableErrors()) {
+          const isNonRecoverable = NON_RECOVERABLE.has(category);
+          if (isNonRecoverable) {
+            this.onAgentBlocked?.(agent.id, errorMessage);
+          }
+
+          if (isNonRecoverable && this.allAgentsHaveNonRecoverableErrors()) {
             const errors = Array.from(this.agentErrors.entries()).map(([id, e]) => ({
               agentId: id,
               error: e.message,
             }));
-            this.logger.warn(`All agents hit non-recoverable errors — pausing battle.`, {
+            this.logger.warn(
+            `All agents hit non-recoverable errors — pausing battle.`,
+            {
               component: 'match-engine',
               battleId: this.battleId,
-              errors,
-            });
+            },
+            { errors },
+          );
             await this.publishEvent({
               type: 'BattlePaused',
               aggregateId: this.battleId,
@@ -382,20 +376,43 @@ export class MatchEngine {
             return;
           }
 
-          rawAction = {
-            agentId: agent.id,
-            type: 'pass',
-            parameters: {},
-            timestamp: Date.now(),
-          };
+          const retryCount = (this.agentRetries.get(agent.id) ?? 0) + 1;
+          this.agentRetries.set(agent.id, retryCount);
+
+          if (retryCount >= 3) {
+            const errors = Array.from(this.agentErrors.entries()).map(([id, e]) => ({
+              agentId: id,
+              error: e.message,
+            }));
+            this.logger.warn(
+              `Agent ${agent.name} failed 3 times — pausing battle.`,
+              {
+                component: 'match-engine',
+                battleId: this.battleId,
+              },
+              { errors },
+            );
+            await this.publishEvent({
+              type: 'BattlePaused',
+              aggregateId: this.battleId,
+              timestamp: new Date(),
+              payload: { reason: `Agent ${agent.name} failed to decide after 3 retries: ${errorMessage}`, errors },
+              metadata: { correlationId: this.battleId, version: 1 },
+            });
+            this.state.phase = 'paused';
+            return;
+          }
+
+          continue;
         }
 
-        if (rawAction.type !== 'pass') {
-          this.logger.info(`Agent ${agent.name} decided: ${rawAction.type}(${JSON.stringify(rawAction.parameters)})`, {
-            component: 'match-engine',
-            agentId: agent.id,
-          });
-        }
+        this.agentRetries.delete(agent.id);
+        this.onAgentUnblocked?.(agent.id);
+
+        this.logger.info(`Agent ${agent.name} decided: ${rawAction.type}(${JSON.stringify(rawAction.parameters)})`, {
+          component: 'match-engine',
+          agentId: agent.id,
+        });
 
         await this.publishEvent({
           type: 'ThinkingFinished',
@@ -431,6 +448,7 @@ export class MatchEngine {
           this.state.scores = scores;
 
           // 9. Publish ActionExecuted
+          this.agentRetries.delete(agent.id);
           await this.publishEvent({
             type: 'ActionExecuted',
             aggregateId: this.battleId,
@@ -481,6 +499,10 @@ export class MatchEngine {
     }
   }
 
+  private finish(_winner: string | undefined, _reason: string): void {
+    this.state.phase = 'completed';
+  }
+
   private allAgentsHaveNonRecoverableErrors(): boolean {
     return this.agents.every((a) => {
       const err = this.agentErrors.get(a.id);
@@ -490,10 +512,6 @@ export class MatchEngine {
 
   private describeErrors(errors: Array<{ agentId: string; error: string }>): string {
     return errors.map((e) => `${e.agentId.slice(0, 8)}: ${e.error.split('"')[0]?.slice(0, 60) ?? e.error}`).join('; ');
-  }
-
-  private finish(_winner: string | undefined, _reason: string): void {
-    this.state.phase = 'completed';
   }
 
   private async publishEvent(event: Parameters<EventBus['publish']>[0]): Promise<void> {

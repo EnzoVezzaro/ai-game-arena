@@ -58,7 +58,7 @@ function printHelp() {
 Usage: arena <command> [options]
 
 Commands:
-  run                         Run a battle (default: battle-tanks, aggressive vs defensive)
+  run                         Run a battle (default: html, aggressive vs defensive)
   plugin list                 List all installed plugins
   plugin create <name>        Scaffold a new plugin
   arena list                  List all available arenas
@@ -76,7 +76,7 @@ Options:
   --version, -v               Show version
 
 Examples:
-  arena run --arena chess --agents aggressive,defensive --names Alice,Bob
+  arena run --arena desert --agents aggressive,defensive --names Alice,Bob
   arena run --seed 42
   arena plugin list
   arena plugin create my-plugin

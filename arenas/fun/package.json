@@ -1,5 +1,5 @@
 {
-  "name": "chess-arena",
+  "name": "arena-fun",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -16,9 +16,7 @@
     "typecheck": "bun x tsc --noEmit"
   },
   "dependencies": {
-    "chess": "workspace:*",
-    "@ai-game-arena/sdk": "workspace:*",
-    "@ai-game-arena/controller": "workspace:*"
+    "@ai-game-arena/sdk": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

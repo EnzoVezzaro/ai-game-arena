@@ -21,7 +21,7 @@ export class AgentRuntime {
   private logger: Logger;
   private agent: AgentConfig | null = null;
   private mcpClient: McpClient | null = null;
-  private llmProvider: LLMProvider;
+  private llmProvider: LLMProvider | null = null;
   private memory: AgentMemory = {
     shortTerm: [],
     longTerm: [],
@@ -33,7 +33,6 @@ export class AgentRuntime {
 
   constructor(options: AgentRuntimeOptions) {
     this.logger = options.logger;
-    this.llmProvider = options.provider ?? createProvider(undefined);
   }
 
   async initialize(agent: AgentConfig): Promise<void> {
@@ -43,7 +42,7 @@ export class AgentRuntime {
       this.llmProvider = createProvider(agent.provider);
     }
 
-    this.logger.info(`Initialized agent: ${agent.name} (${agent.id}) with provider: ${this.llmProvider.type}`, {
+    this.logger.info(`Initialized agent: ${agent.name} (${agent.id}) with provider: ${this.llmProvider?.type ?? 'none'}`, {
       component: 'agent-runtime',
       agentId: agent.id,
     });
@@ -86,6 +85,12 @@ export class AgentRuntime {
       ? JSON.stringify(this.lastObservation.data)
       : 'No observation available';
 
+    if (!this.llmProvider) {
+      throw new Error(
+        `Agent ${this.agent?.name ?? 'unknown'} has no LLM provider configured`,
+      );
+    }
+
     const response = await this.llmProvider.decide(
       this.agent!,
       observationText,
@@ -96,12 +101,7 @@ export class AgentRuntime {
     if (response.toolCalls && response.toolCalls.length > 0) {
       const toolCall = response.toolCalls[0];
       if (!toolCall) {
-        return {
-          agentId: this.agent?.id ?? 'unknown',
-          type: 'pass',
-          parameters: {},
-          timestamp: Date.now(),
-        };
+        throw new Error('Provider returned empty tool call');
       }
 
       try {
@@ -123,24 +123,13 @@ export class AgentRuntime {
           component: 'agent-runtime',
           agentId: this.agent?.id,
         });
-
-        return {
-          agentId: this.agent?.id ?? 'unknown',
-          type: 'pass',
-          parameters: {},
-          timestamp: Date.now(),
-        };
+        throw err;
       }
     }
 
     this.decisionHistory.push({ role: 'assistant', content: response.content });
 
-    return {
-      agentId: this.agent?.id ?? 'unknown',
-      type: 'pass',
-      parameters: {},
-      timestamp: Date.now(),
-    };
+    throw new Error('No tool calls returned and no text response');
   }
 
   async executeTool(toolName: string, args: Record<string, unknown>): Promise<McpToolResult> {
@@ -185,7 +174,9 @@ export class AgentRuntime {
   }
 
   async shutdown(): Promise<void> {
-    await this.llmProvider.shutdown();
+    if (this.llmProvider) {
+      await this.llmProvider.shutdown();
+    }
     this.mcpClient = null;
     this.agent = null;
     this.memory = { shortTerm: [], longTerm: [], social: [], strategic: [] };

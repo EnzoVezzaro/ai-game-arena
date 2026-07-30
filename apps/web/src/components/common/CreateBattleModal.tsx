@@ -26,7 +26,6 @@ interface GameSummary {
   description?: string;
   category?: string;
   format?: string;
-  adapterType?: string;
   icon?: string;
   min_players?: number;
   max_players?: number;
@@ -68,6 +67,7 @@ export function CreateBattleModal({ open, onClose, onCreated }: CreateBattleModa
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
   const [autoStart, setAutoStart] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [checkingAgents, setCheckingAgents] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Initial load: arenas, games, agents.
@@ -160,6 +160,30 @@ export function CreateBattleModal({ open, onClose, onCreated }: CreateBattleModa
     setCreating(true);
     setError(null);
     try {
+      setCheckingAgents(true);
+      const healthRes = await fetch('/api/agents-health/health', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentIds: selectedAgentIds }),
+      });
+      setCheckingAgents(false);
+      if (!healthRes.ok) {
+        const txt = await healthRes.text().catch(() => healthRes.statusText);
+        throw new Error(txt || `Health check failed: HTTP ${healthRes.status}`);
+      }
+      const health = (await healthRes.json()) as {
+        ok: boolean;
+        results: Array<{ agentId: string; ok: boolean; error?: string; providerType?: string }>;
+      };
+      if (!health.ok) {
+        const failed = health.results.filter((r) => !r.ok);
+        const messages = failed.map((r) => {
+          const provider = r.providerType ? ` (${r.providerType})` : '';
+          return `Agent ${r.agentId}${provider}: ${r.error}`;
+        });
+        throw new Error(`Agent health check failed: ${messages.join('; ')}`);
+      }
+
       const arenaAgents = selectedAgentIds.map((id) => {
         const a = agents.find((x) => x.id === id);
         return {
@@ -196,6 +220,7 @@ export function CreateBattleModal({ open, onClose, onCreated }: CreateBattleModa
       setError((err as Error).message);
     } finally {
       setCreating(false);
+      setCheckingAgents(false);
     }
   }
 
@@ -226,15 +251,21 @@ export function CreateBattleModal({ open, onClose, onCreated }: CreateBattleModa
           </button>
           <button
             onClick={handleCreate}
-            disabled={creating || !arenaId || !agentCountValid}
+            disabled={creating || checkingAgents || !arenaId || !agentCountValid}
             className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Icon
-              name={creating ? 'Loader' : 'Play'}
+              name={creating || checkingAgents ? 'Loader' : 'Play'}
               size={14}
-              className={creating ? 'animate-spin' : ''}
+              className={creating || checkingAgents ? 'animate-spin' : ''}
             />
-            {creating ? 'Creating…' : autoStart ? 'Create & Start' : 'Create Battle'}
+            {checkingAgents
+              ? 'Checking agents…'
+              : creating
+                ? 'Creating…'
+                : autoStart
+                  ? 'Create & Start'
+                  : 'Create Battle'}
           </button>
         </>
       }
@@ -250,10 +281,10 @@ export function CreateBattleModal({ open, onClose, onCreated }: CreateBattleModa
             <Select
               value={arenaId}
               onChange={handleSelectArena}
-              options={arenas.map((a) => ({
-                value: a.id,
-                label: `${a.name} (${a.id})`,
-              }))}
+options={arenas.map((a) => ({
+  value: a.id,
+  label: a.name,
+}))}
             />
           </Field>
 
@@ -371,16 +402,16 @@ function ArenaInfoCard({ detail }: { detail: ArenaDetail }) {
       <div className="flex flex-wrap gap-1.5">
         <InfoPill label="players" value={`${detail.minPlayers}-${detail.maxPlayers}`} />
         {detail.gameId && <InfoPill label="game" value={detail.gameId} accent="#fb7185" />}
-        {detail.defaultStrategies.map((s) => (
+        {(detail.defaultStrategies ?? []).map((s) => (
           <InfoPill key={s} label="strategy" value={s} accent="#a78bfa" />
         ))}
-        {detail.mandatoryCapabilities.map((c) => (
+        {(detail.mandatoryCapabilities ?? []).map((c) => (
           <InfoPill key={c} label="cap" value={c} accent="#fbbf24" />
         ))}
       </div>
-      {detail.plugins.length > 0 && (
+      {(detail.plugins ?? []).length > 0 && (
         <div className="font-mono text-[10px] text-muted-foreground">
-          plugins: {detail.plugins.join(', ')}
+          plugins: {(detail.plugins ?? []).join(', ')}
         </div>
       )}
     </div>
@@ -405,10 +436,10 @@ function GameInfoCard({ game }: { game: GameSummary }) {
       {game.description && <p className="text-xs text-foreground/80">{game.description}</p>}
       <div className="flex flex-wrap gap-1.5">
         {game.category && <InfoPill label="category" value={game.category} accent="#38bdf8" />}
-        {(game.format || game.adapterType) && (
+        {game.format && (
           <InfoPill
             label="format"
-            value={game.format ?? game.adapterType ?? 'native'}
+            value={game.format}
             accent="#fb7185"
           />
         )}
@@ -419,16 +450,16 @@ function GameInfoCard({ game }: { game: GameSummary }) {
           />
         )}
         {game.grid_size && <InfoPill label="grid" value={`${game.grid_size}×${game.grid_size}`} />}
-        {game.mandatoryCapabilities.map((c) => (
+        {(game.mandatoryCapabilities ?? []).map((c) => (
           <InfoPill key={c} label="cap" value={c} accent="#fbbf24" />
         ))}
-        {game.capabilities.slice(0, 6).map((c) => (
+        {(game.capabilities ?? []).slice(0, 6).map((c) => (
           <InfoPill key={c} label="tool" value={c} accent="#34d399" />
         ))}
       </div>
-      {game.ui.length > 0 && (
+      {(game.ui ?? []).length > 0 && (
         <div className="font-mono text-[10px] text-muted-foreground">
-          ui panels: {game.ui.map((u) => u.id).join(', ')}
+          ui panels: {(game.ui ?? []).map((u) => u.id).join(', ')}
         </div>
       )}
     </div>

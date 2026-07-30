@@ -30,10 +30,19 @@ export function createBattleRoutes(container: Container) {
         return { ...full, strategy: a.strategy ?? full.strategy };
       }),
     );
-    const battle = await runtime.createBattle(arenaId, enriched, {
-      ...config,
-      gameId,
-    });
+    let battle;
+    try {
+      battle = await runtime.createBattle(arenaId, enriched, {
+        ...config,
+        gameId,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.startsWith('Arena not found:')) {
+        return c.json({ error: msg }, 400);
+      }
+      throw err;
+    }
     return c.json(
       {
         id: battle.id,

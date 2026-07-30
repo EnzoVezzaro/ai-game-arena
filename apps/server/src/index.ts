@@ -9,11 +9,11 @@ import { Tokens } from '@ai-game-arena/core';
 import type { Logger, EventBus } from '@ai-game-arena/sdk';
 import { PluginManager } from '@ai-game-arena/plugin-manager';
 import { Runtime } from '@ai-game-arena/runtime';
-import { ChessHtmlAdapter } from 'chess-arena';
 import type { GameAdapter } from '@ai-game-arena/controller';
 import { SqliteStorage } from '@ai-game-arena/storage';
 import { createApiRoutes } from './routes/api';
 import { createBattleRoutes } from './routes/battles';
+import { createAgentHealthRoutes } from './routes/agent-health';
 import { createAgentRoutes } from './routes/agents';
 import { createPluginRoutes } from './routes/plugins';
 import { createArenasRoutes } from './routes/arenas';
@@ -106,10 +106,9 @@ export async function createServer(config: ServerConfig) {
     logger: log,
     eventBus,
     storage,
-    adapterFactory: (arenaId: string, _agentId: string): GameAdapter | null => {
-      if (arenaId === 'chess') return new ChessHtmlAdapter();
-      return null;
-    },
+      adapterFactory: (_arenaId: string, _agentId: string): GameAdapter | null => {
+        return null;
+      },
   });
   container.register('runtime', runtime);
 
@@ -205,6 +204,7 @@ export async function createServer(config: ServerConfig) {
   app.route('/api/v1', createApiRoutes(container));
   app.route('/api/v1/battles', createBattleRoutes(container));
   app.route('/api/v1/agents', createAgentRoutes(container));
+  app.route('/api/v1/agents-health', createAgentHealthRoutes(container));
   app.route('/api/v1/plugins', createPluginRoutes(container));
   app.route('/api/v1/arenas', createArenasRoutes(container, projectRoot));
   app.route('/api/v1/games', createGamesRoutes(gamesManager));
@@ -217,6 +217,7 @@ export async function createServer(config: ServerConfig) {
   app.route('/api', createApiRoutes(container));
   app.route('/api/battles', createBattleRoutes(container));
   app.route('/api/agents', createAgentRoutes(container));
+  app.route('/api/agents-health', createAgentHealthRoutes(container));
   app.route('/api/plugins', createPluginRoutes(container));
   app.route('/api/arenas', createArenasRoutes(container, projectRoot));
   app.route('/api/games', createGamesRoutes(gamesManager));

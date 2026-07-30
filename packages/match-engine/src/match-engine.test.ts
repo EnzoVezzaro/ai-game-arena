@@ -23,16 +23,6 @@ function createTestArena(): ArenaPlugin {
         },
       };
     },
-    getTools() {
-      return [
-        {
-          name: 'test_action',
-          description: 'Test action',
-          parameters: [{ name: 'value', type: 'string', description: 'A value', required: true }],
-          mandatory: true,
-        },
-      ];
-    },
     validateAction() {
       return { valid: true };
     },
