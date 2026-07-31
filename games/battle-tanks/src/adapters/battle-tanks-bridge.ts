@@ -80,26 +80,20 @@ export class BattleTanksBridge implements GameBridge {
 
     controller.registerTool(
       'scan',
-      'Scan the surrounding area',
+      'Move your tank one step in a direction and scan the area',
       {
         type: 'object',
         properties: {
-          x: { type: 'number', description: 'X coordinate to scan' },
-          y: { type: 'number', description: 'Y coordinate to scan' },
+          direction: {
+            type: 'string',
+            enum: ['up', 'down', 'left', 'right'],
+            description: 'Direction to move and scan',
+          },
         },
-        required: ['x', 'y'],
+        required: ['direction'],
       },
       async (args: Record<string, unknown>) => {
-        return { content: [{ type: 'text', text: `Scanned at (${String(args.x)}, ${String(args.y)})` }] };
-      },
-    );
-
-    controller.registerTool(
-      'shield',
-      'Activate shield defense',
-      {},
-      async () => {
-        return { content: [{ type: 'text', text: 'Shield activated' }] };
+        return { content: [{ type: 'text', text: `Scanned ${String(args.direction)}` }] };
       },
     );
 

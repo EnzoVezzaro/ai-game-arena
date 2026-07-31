@@ -74,7 +74,13 @@ export function validateAction(action: { agentId: string; type: string; paramete
     return { valid: true };
   }
 
-  if (action.type === 'scan') return { valid: true };
+  if (action.type === 'scan') {
+    const direction = action.parameters.direction as string;
+    if (!['up', 'down', 'left', 'right'].includes(direction)) {
+      return { valid: false, error: 'Invalid scan direction. Use: up, down, left, right' };
+    }
+    return { valid: true };
+  }
   if (action.type === 'shield') return { valid: true };
   if (action.type === 'pass') return { valid: true };
 
@@ -142,10 +148,23 @@ export function executeAction(
   }
 
   if (action.type === 'scan') {
+    // scan(direction) is a move action: the tank moves one step in the given
+    // direction and scans the area. It is never a wasted turn.
+    const direction = action.parameters.direction as string;
+    const tank = newState.tanks[action.agentId];
+    if (!tank || !tank.alive) {
+      return { success: false, events, state: newState, error: 'Tank not found or destroyed' };
+    }
+
+    const from = { x: tank.x, y: tank.y };
+    const newPos = calculateNewPosition(tank.x, tank.y, direction, newState);
+    tank.x = newPos.x;
+    tank.y = newPos.y;
+
     events.push({
       type: 'SCAN_PERFORMED',
       timestamp: Date.now(),
-      data: { agentId: action.agentId, position: action.parameters },
+      data: { agentId: action.agentId, from, to: newPos, direction },
     });
   }
 

@@ -37,7 +37,7 @@ describe('BattleTanksBridge (GAME_ENGINE.md)', () => {
     expect(view.you).toMatchObject({ id: 'a', x: 0, y: 0, health: 100, alive: true });
     expect(view.tanks).toHaveLength(1);
     expect(view.tanks[0]).toMatchObject({ id: 'b', x: 7, y: 7, health: 100 });
-    expect(view.availableActions).toEqual(['move', 'attack', 'scan', 'shield', 'pass']);
+    expect(view.availableActions).toEqual(['move', 'attack', 'scan', 'pass']);
     expect(view.text).toContain('YOUR TANK: you are at (0,0) with 100 HP');
     expect(view.text).toContain('Tank at (7,7)');
     expect(view.text).toContain('ACTIONS AVAILABLE');
@@ -59,7 +59,7 @@ describe('BattleTanksBridge (GAME_ENGINE.md)', () => {
     bridge.registerTools(controller);
     const capabilities = controller.getCapabilities();
     const names = capabilities.map((c) => c.name).sort();
-    expect(names).toEqual(['attack', 'move', 'pass', 'scan', 'shield']);
+    expect(names).toEqual(['attack', 'move', 'pass', 'scan']);
   });
 
   it('applies a move action to the game and emits events', async () => {
@@ -79,6 +79,28 @@ describe('BattleTanksBridge (GAME_ENGINE.md)', () => {
     expect(afterView.you.x).toBe(x + 1);
     expect(events.some((e) => e.type === 'input')).toBe(true);
     expect(events.some((e) => e.type === 'tank_moved')).toBe(true);
+  });
+
+  it('scan requires a valid direction and moves the tank (not a wasted turn)', async () => {
+    const bridge = new BattleTanksBridge();
+    const events: BridgeEvent[] = [];
+    bridge.onEvent((event) => events.push(event));
+    await bridge.initialize({ id: 'battle-tanks', seed: 42, agentIds: ['a', 'b'] });
+
+    const before = await bridge.observe('a');
+    const beforeView = before.data as { you: { x: number; y: number } };
+    expect(beforeView.you).toMatchObject({ x: 0, y: 0 });
+
+    // scan without a direction is invalid → nothing moves.
+    await bridge.applyActions('a', [{ type: 'scan', payload: {} }]);
+    const afterInvalid = await bridge.observe('a');
+    expect((afterInvalid.data as { you: { x: number } }).you.x).toBe(0);
+
+    // scan(direction) moves the tank one step.
+    await bridge.applyActions('a', [{ type: 'scan', payload: { direction: 'right' } }]);
+    const after = await bridge.observe('a');
+    expect((after.data as { you: { x: number } }).you.x).toBe(1);
+    expect(events.some((e) => e.type === 'scan_performed')).toBe(true);
   });
 
   it('translates keyboard.press into game movement', async () => {

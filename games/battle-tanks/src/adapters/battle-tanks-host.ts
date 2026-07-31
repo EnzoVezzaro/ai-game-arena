@@ -171,11 +171,12 @@ export class BattleTanksHost implements HtmlGameHost {
       '',
       `TURN: ${turn} — PHASE: ${phase}`,
       '',
-      'ACTIONS AVAILABLE: move(direction: up|down|left|right), attack(targetX, targetY), scan(x, y), shield(), pass().',
+      'ACTIONS AVAILABLE: move(direction: up|down|left|right), attack(targetX, targetY), scan(direction: up|down|left|right), pass().',
       'RULES:',
       '- Take exactly one action per turn.',
       '- You cannot move outside the grid; moving into a wall does nothing.',
       '- attack(targetX, targetY) damages any enemy tank occupying that cell for 35 HP.',
+      '- scan(direction) moves you one step in that direction and scans the area; it is a move action.',
       '- You win by being the last tank alive. If the game is over, just pass().',
     ].join('\n');
 
@@ -186,7 +187,7 @@ export class BattleTanksHost implements HtmlGameHost {
       phase,
       you: you ? { id: playerId, x: you.x, y: you.y, health: you.health, alive: you.alive } : null,
       tanks: others,
-      availableActions: ['move', 'attack', 'scan', 'shield', 'pass'],
+      availableActions: ['move', 'attack', 'scan', 'pass'],
       winner: this.winner,
     };
   }
