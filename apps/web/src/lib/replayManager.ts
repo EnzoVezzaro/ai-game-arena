@@ -115,7 +115,12 @@ export class ReplayManager {
   // ---------------- playback control ----------------
 
   play(): void {
-    if (this.playing || !this.data || this.index >= this.data.events.length) return;
+    if (this.playing || !this.data) return;
+    // The game is stopped at the last move (winner screen). Pressing play
+    // starts the replay again from the beginning — it never auto-restarts.
+    if (this.index >= this.data.events.length) {
+      this.index = 0;
+    }
     this.playing = true;
     this.schedule();
   }
@@ -178,6 +183,18 @@ export class ReplayManager {
     if (!this.data) return doneStep;
     const idx = this.findTurnIndex(turn);
     return this.jumpToEvent(idx);
+  }
+
+  /**
+   * Stop the game at the last move (done state) so the board shows the final
+   * frame with the winner screen. Pressing play then restarts from the top.
+   */
+  jumpToEnd(): ReplayStep {
+    if (!this.data) return doneStep;
+    this.index = this.data.events.length;
+    const s = this.currentStep();
+    this.onStep(s);
+    return s;
   }
 
   reset(): void {

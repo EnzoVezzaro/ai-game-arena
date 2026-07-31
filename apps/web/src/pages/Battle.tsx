@@ -198,11 +198,15 @@ export function Battle() {
   const [replayEvents, setReplayEvents] = useState<BattleEventItem[]>([]);
   const [replayStepIndex, setReplayStepIndex] = useState(0);
   const [replayTotalEvents, setReplayTotalEvents] = useState(0);
+  // True once the replay timeline is loaded. Before that we keep showing the
+  // live battle snapshot so the board does not flash back to the start.
+  const [replayReady, setReplayReady] = useState(false);
 
   useEffect(() => {
     if (!id || !isReplay) return;
     const mgr = replay;
     let cancelled = false;
+    setReplayReady(false);
     mgr.load(id).then(() => {
       if (cancelled) return;
       setReplayTotalEvents(mgr.totalEvents);
@@ -224,8 +228,11 @@ export function Battle() {
         }
       });
       mgr.setSpeed(replaySpeed);
-      // Start paused so the spectator controls playback.
+      // Stop the game at the last move (winner screen). Pressing play then
+      // restarts the replay from the beginning — it never auto-restarts.
+      mgr.jumpToEnd();
       mgr.pause();
+      setReplayReady(true);
     });
     return () => {
       cancelled = true;
@@ -333,9 +340,13 @@ export function Battle() {
   );
 
   // In replay, the board comes from the server-reconstructed timeline so it
-  // replays the actual game; live battles use the live battle snapshot.
+  // replays the actual game. While the timeline loads (and before any play
+  // press) we show the battle's final snapshot so the board stops at the last
+  // move with the winner screen instead of flashing back to the start.
   const renderState = isReplay
-    ? replay.renderStateAt(replayStepIndex)
+    ? replayReady
+      ? replay.renderStateAt(replayStepIndex)
+      : (battle?.renderState ?? null)
     : (battle?.renderState ?? null);
   const units = (renderState as { units?: Unit[] } | undefined)?.units ?? [];
   const turn = isReplay ? replay.turnAt(replayStepIndex) : battle?.state?.currentTurn ?? 0;
