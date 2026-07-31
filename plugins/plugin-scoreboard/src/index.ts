@@ -130,6 +130,20 @@ export async function activate(ctx: PluginContext): Promise<void> {
         leaderboard[entry.agentId] = row;
       }
       await ctx.storage.set(leaderboardKey, leaderboard);
+
+      // Announce the finalized scoreboard so dependent plugins (e.g. rewards)
+      // can connect to it. Custom event types are allowed (GAME_ENGINE.md).
+      await ctx.eventBus.publish({
+        type: 'BattleScored',
+        aggregateId: battleId,
+        timestamp: new Date(),
+        payload: {
+          battleId,
+          winner: board.winner ?? null,
+          scores: Object.fromEntries(board.scores.map((s) => [s.agentId, s.score])),
+        },
+        metadata: { correlationId: battleId, version: 1 },
+      } as never);
     },
   });
 

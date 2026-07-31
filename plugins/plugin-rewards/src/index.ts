@@ -1,94 +1,154 @@
-import type { PluginContext } from '@ai-game-arena/sdk';
+import type { PluginContext, ServerRoute } from '@ai-game-arena/sdk';
 
-interface AgentReward {
-  agentId: string;
-  wins: number;
-  losses: number;
-  draws: number;
-  totalScore: number;
-  matchesPlayed: number;
-  achievements: string[];
+/**
+ * Rewards plugin — awards achievements and extends the Scoreboard plugin.
+ *
+ * The scoreboard plugin owns all score/leaderboard logic (it tracks battles,
+ * wins, totalScore and a leaderboard in its own namespaced storage). This
+ * plugin deliberately does NOT duplicate that: it connects to the scoreboard
+ * through its `BattleScored` event, and only adds achievements on top.
+ *
+ * Dependencies (manifest): requires plugin-scoreboard — to install rewards you
+ * must have the scoreboard. The scoreboard works standalone and never depends
+ * on rewards.
+ *
+ * Server routes:
+ *   GET /api/rewards/agents/:agentId  → achievements for an agent
+ *   GET /api/rewards/leaderboard      → scoreboard leaderboard extended with
+ *                                       each agent's achievements
+ */
+
+interface BattleScoredEvent {
+  aggregateId?: string;
+  payload?: {
+    battleId?: string;
+    winner?: string | null;
+    scores?: Record<string, number>;
+  };
 }
 
-const rewards = new Map<string, AgentReward>();
+interface AgentAchievements {
+  agentId: string;
+  achievements: Record<string, number>;
+  updatedAt: number;
+}
+
+interface ScoreboardRow {
+  agentId: string;
+  battles: number;
+  wins: number;
+  totalScore: number;
+  bestScore: number;
+  updatedAt?: number;
+}
+
+const achievementsKey = (agentId: string) => `achievements:${agentId}`;
 
 export async function activate(ctx: PluginContext): Promise<void> {
-  ctx.logger.info('Rewards plugin activated', { component: 'plugin-rewards' });
+  ctx.logger.info('Rewards plugin activated (depends on plugin-scoreboard)', {
+    component: 'plugin-rewards',
+  });
 
   ctx.registerMcpTool({
     name: 'get_rewards',
-    description: 'Get rewards for an agent',
+    description: 'Get the achievements awarded to an agent',
     parameters: {
       agentId: { type: 'string', description: 'Agent ID' },
     },
   });
 
-  ctx.registerMcpTool({
-    name: 'get_leaderboard',
-    description: 'Get the leaderboard',
-    parameters: {},
-  });
-
-  // Listen for match finished events
+  // Connect to the scoreboard plugin: it publishes BattleScored after it
+  // finalizes a battle. Rewards turns that data into achievements.
   ctx.registerEventHandler({
-    eventTypes: ['MATCH_FINISHED'],
+    eventTypes: ['BattleScored'],
     handler: async (event: unknown) => {
-      const e = event as {
-        payload?: { agents?: Array<{ id: string }>; scores?: Record<string, number> };
-      };
-      const { agents, scores } = e.payload ?? {};
-      if (!agents || !scores) return;
+      const e = event as BattleScoredEvent;
+      const battleId = e.aggregateId ?? e.payload?.battleId;
+      const scores = e.payload?.scores ?? {};
+      if (!battleId || Object.keys(scores).length === 0) return;
 
-      // Find winner
-      const sortedAgents = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-      const winnerId = sortedAgents[0]?.[0];
+      const winner = e.payload?.winner ?? topScorer(scores);
 
-      for (const agent of agents) {
-        const reward = getOrCreateReward(agent.id);
-        reward.matchesPlayed++;
+      for (const [agentId, score] of Object.entries(scores)) {
+        const rec = (await ctx.storage.get<AgentAchievements>(achievementsKey(agentId))) ?? {
+          agentId,
+          achievements: {},
+          updatedAt: 0,
+        };
 
-        if (agent.id === winnerId) {
-          reward.wins++;
-          reward.achievements.push('victory');
-        } else if (sortedAgents.length > 1 && sortedAgents[1]?.[1] === scores[agent.id]) {
-          reward.draws++;
-        } else {
-          reward.losses++;
-        }
+        award(rec, 'battle-played');
+        if (agentId === winner) award(rec, 'victory');
+        if (isTopScore(scores, agentId)) award(rec, 'top-scorer');
+        if (score >= 50) award(rec, 'scored-50');
+        if (score >= 100) award(rec, 'century');
 
-        reward.totalScore += scores[agent.id] ?? 0;
+        rec.updatedAt = Date.now();
+        await ctx.storage.set(achievementsKey(agentId), rec);
       }
     },
   });
+
+  const routes: ServerRoute[] = [
+    {
+      method: 'GET',
+      path: '/api/rewards/agents/:agentId',
+      async handler(req) {
+        const r = req as { param: (name: string) => string | undefined };
+        const agentId = r.param('agentId')!;
+        const rec = await ctx.storage.get<AgentAchievements>(achievementsKey(agentId));
+        return rec ?? { agentId, achievements: {}, updatedAt: 0 };
+      },
+    },
+    {
+      method: 'GET',
+      path: '/api/rewards/leaderboard',
+      async handler(req) {
+        const r = req as { url?: string };
+
+        // Extend the scoreboard's leaderboard with achievements. We talk to
+        // the scoreboard plugin through its own server route (its storage is
+        // namespaced and not directly reachable). Derive the origin from the
+        // incoming request so this works in any deployment topology.
+        let rows: ScoreboardRow[] = [];
+        try {
+          const origin = r.url ? new URL(r.url).origin : '';
+          if (origin) {
+            const res = await fetch(`${origin}/api/scoreboard/leaderboard`);
+            if (res.ok) {
+              rows = (await res.json()) as ScoreboardRow[];
+            }
+          }
+        } catch {
+          // Scoreboard unreachable — fall back to achievements-only rows.
+        }
+
+        const extended: Array<ScoreboardRow & { achievements: Record<string, number> }> = [];
+        for (const row of rows) {
+          const rec = await ctx.storage.get<AgentAchievements>(achievementsKey(row.agentId));
+          extended.push({ ...row, achievements: rec?.achievements ?? {} });
+        }
+
+        return extended;
+      },
+    },
+  ];
+
+  for (const route of routes) ctx.registerServerRoute(route);
 }
 
 export async function deactivate(_ctx: PluginContext): Promise<void> {
-  rewards.clear();
+  // Storage is namespaced; achievements stay intact.
 }
 
-function getOrCreateReward(agentId: string): AgentReward {
-  let reward = rewards.get(agentId);
-  if (!reward) {
-    reward = {
-      agentId,
-      wins: 0,
-      losses: 0,
-      draws: 0,
-      totalScore: 0,
-      matchesPlayed: 0,
-      achievements: [],
-    };
-    rewards.set(agentId, reward);
-  }
-  return reward;
+function award(rec: AgentAchievements, name: string): void {
+  rec.achievements[name] = (rec.achievements[name] ?? 0) + 1;
 }
 
-export function getRewards(agentId: string): AgentReward | undefined {
-  return rewards.get(agentId);
+function topScorer(scores: Record<string, number>): string | undefined {
+  return Object.entries(scores).sort((a, b) => b[1] - a[1])[0]?.[0];
 }
 
-export function getLeaderboard(): AgentReward[] {
-  return Array.from(rewards.values()).sort(
-    (a, b) => b.wins - a.wins || b.totalScore - a.totalScore,
-  );
+function isTopScore(scores: Record<string, number>, agentId: string): boolean {
+  const top = topScorer(scores);
+  return top !== undefined && scores[agentId] === scores[top];
 }

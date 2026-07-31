@@ -11,6 +11,7 @@
     "@ai-game-arena/sdk": "workspace:*"
   },
   "devDependencies": {
+    "@ai-game-arena/core": "workspace:*",
     "@types/bun": "latest",
     "typescript": "^5.7.0"
   }
