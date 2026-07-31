@@ -1,16 +1,17 @@
 import type { PluginContext, ServerRoute } from '@ai-game-arena/sdk';
 
 /**
- * Rewards plugin — awards achievements and extends the Scoreboard plugin.
+ * Rewards plugin — awards achievements and extends the Scoreboard core package.
  *
- * The scoreboard plugin owns all score/leaderboard logic (it tracks battles,
- * wins, totalScore and a leaderboard in its own namespaced storage). This
- * plugin deliberately does NOT duplicate that: it connects to the scoreboard
- * through its `BattleScored` event, and only adds achievements on top.
+ * The scoreboard is a core package (@ai-game-arena/scoreboard) that owns all
+ * score/leaderboard logic: it listens to ScoreUpdated/BattleFinished, persists
+ * scores + leaderboard, and publishes a BattleScored event when a battle
+ * finishes. This plugin deliberately does NOT duplicate that: it connects to
+ * the scoreboard through the BattleScored event and only adds achievements.
  *
- * Dependencies (manifest): requires plugin-scoreboard — to install rewards you
- * must have the scoreboard. The scoreboard works standalone and never depends
- * on rewards.
+ * Because the scoreboard is core, it is always present — rewards needs it
+ * installed/wired, and the scoreboard works without rewards (no reverse
+ * dependency).
  *
  * Server routes:
  *   GET /api/rewards/agents/:agentId  → achievements for an agent
@@ -45,7 +46,7 @@ interface ScoreboardRow {
 const achievementsKey = (agentId: string) => `achievements:${agentId}`;
 
 export async function activate(ctx: PluginContext): Promise<void> {
-  ctx.logger.info('Rewards plugin activated (depends on plugin-scoreboard)', {
+  ctx.logger.info('Rewards plugin activated (extends core scoreboard)', {
     component: 'plugin-rewards',
   });
 
@@ -57,7 +58,7 @@ export async function activate(ctx: PluginContext): Promise<void> {
     },
   });
 
-  // Connect to the scoreboard plugin: it publishes BattleScored after it
+  // Connect to the core scoreboard: it publishes BattleScored after it
   // finalizes a battle. Rewards turns that data into achievements.
   ctx.registerEventHandler({
     eventTypes: ['BattleScored'],
@@ -106,9 +107,9 @@ export async function activate(ctx: PluginContext): Promise<void> {
         const r = req as { url?: string };
 
         // Extend the scoreboard's leaderboard with achievements. We talk to
-        // the scoreboard plugin through its own server route (its storage is
-        // namespaced and not directly reachable). Derive the origin from the
-        // incoming request so this works in any deployment topology.
+        // the scoreboard core package through its server route (its storage is
+        // not namespaced to plugins). Derive the origin from the incoming
+        // request so this works in any deployment topology.
         let rows: ScoreboardRow[] = [];
         try {
           const origin = r.url ? new URL(r.url).origin : '';

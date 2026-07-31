@@ -2,15 +2,13 @@
   "id": "plugin-rewards",
   "name": "Rewards System",
   "version": "0.1.0",
-  "description": "Awards achievements and extends the Scoreboard plugin",
+  "description": "Awards achievements and extends the core Scoreboard package",
   "author": "AI Game Arena",
   "category": "metric",
   "engines": { "aga": "^0.1.0" },
   "entry": "./dist/index.js",
   "activation": { "startup": true },
-  "dependencies": {
-    "plugin-scoreboard": "^0.1.0"
-  },
+  "dependencies": {},
   "contributions": {
     "mcpTools": ["get_rewards"],
     "eventHandlers": ["BattleScored"],

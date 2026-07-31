@@ -23,6 +23,7 @@
     "@ai-game-arena/packages-manager": "workspace:*",
     "@ai-game-arena/arenas-manager": "workspace:*",
     "@ai-game-arena/controller": "workspace:*",
+    "@ai-game-arena/scoreboard": "workspace:*",
     "battle-tanks": "workspace:*"
   },
   "devDependencies": {

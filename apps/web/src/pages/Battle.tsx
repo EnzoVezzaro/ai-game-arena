@@ -336,8 +336,8 @@ export function Battle() {
   const units = (battle?.renderState as { units?: Unit[] } | undefined)?.units ?? [];
   const turn = isReplay ? replay.turnAt(replayStepIndex) : battle?.state?.currentTurn ?? 0;
 
-  // Scoreboard comes from the independent plugin-scoreboard (extended db
-  // storage). Poll it so live battles show HP/score changes.
+  // Scoreboard comes from the core @ai-game-arena/scoreboard package
+  // (extended db storage). Poll it so live battles show HP/score changes.
   const [scoreboard, setScoreboard] = useState<
     | { status: string; winner?: string; scores: Array<{ agentId: string; score: number; winner?: boolean }> }
     | null
@@ -499,7 +499,7 @@ export function Battle() {
             />
           </div>
 
-          {/* Scoreboard (scores from the independent plugin-scoreboard) */}
+          {/* Scoreboard (scores from the core @ai-game-arena/scoreboard package) */}
           <div className="glass rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <Icon name="TrendingUp" size={13} className="text-primary" />

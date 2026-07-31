@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'bun:test';
 import { InProcessEventBus } from '@ai-game-arena/core';
+import { SqliteStorage } from '@ai-game-arena/storage';
+import { Scoreboard } from '@ai-game-arena/scoreboard';
 import { activate as activateRewards } from './index';
-import { activate as activateScoreboard } from '../../plugin-scoreboard/src/index';
-import type { PluginContext, PluginManifest, ServerRoute } from '@ai-game-arena/sdk';
+import type { PluginContext, PluginManifest, ServerRoute, StorageAdapter } from '@ai-game-arena/sdk';
 
 const noop = () => {};
 const logger = {
@@ -124,14 +125,13 @@ describe('plugin-rewards', () => {
     expect(a2.achievements).toEqual({ 'battle-played': 1, 'scored-50': 1 });
   });
 
-  it('connects to the scoreboard plugin end to end (BattleFinished → BattleScored → achievements)', async () => {
+  it('connects to the core scoreboard end to end (BattleFinished → BattleScored → achievements)', async () => {
     const bus = new InProcessEventBus();
-    const storage = new Map<string, unknown>();
+    const storage = new SqliteStorage(':memory:') as StorageAdapter;
 
-    // Scoreboard activates first (it is a dependency of rewards).
-    const scoreboard = makeContext('plugin-scoreboard', bus, storage);
-    await activateScoreboard(scoreboard.ctx);
-    const rewards = makeContext('plugin-rewards', bus, storage);
+    // The scoreboard core package finalizes battles and emits BattleScored.
+    new Scoreboard({ logger: logger as never, eventBus: bus, storage });
+    const rewards = makeContext('plugin-rewards', bus, new Map());
     await activateRewards(rewards.ctx);
 
     await bus.publish({
@@ -172,7 +172,7 @@ describe('plugin-rewards', () => {
     await activateRewards(env.ctx);
     await bus.publish(battleScored('b1', 'a1', { a1: 100, a2: 40 }));
 
-    // A stand-in scoreboard plugin serving its leaderboard route.
+    // A stand-in for the core scoreboard route serving its leaderboard.
     const scoreboardServer = Bun.serve({
       port: 0,
       fetch() {

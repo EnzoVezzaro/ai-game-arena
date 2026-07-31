@@ -12,6 +12,7 @@ import { Runtime } from '@ai-game-arena/runtime';
 import { createGameBridge } from './lib/game-bridge-factory';
 import { SqliteStorage } from '@ai-game-arena/storage';
 import type { GameBridge } from '@ai-game-arena/controller';
+import { Scoreboard } from '@ai-game-arena/scoreboard';
 import { createApiRoutes } from './routes/api';
 import { createBattleRoutes } from './routes/battles';
 import { createAgentHealthRoutes } from './routes/agent-health';
@@ -23,6 +24,7 @@ import { createProfilesRoutes } from './routes/profiles';
 import { createModelsRoutes } from './routes/models';
 import { createPackagesRoutes } from './routes/packages';
 import { createArtifactRoutes } from './routes/artifacts';
+import { createScoreboardRoutes } from './routes/scoreboard';
 import { BattleWebSocketServer } from './ws/battle-ws';
 import { GamesManager } from '@ai-game-arena/games-manager';
 import { PackagesManager } from '@ai-game-arena/packages-manager';
@@ -112,6 +114,10 @@ export async function createServer(config: ServerConfig) {
       },
   });
   container.register('runtime', runtime);
+
+  // Core scoreboard service (scores + leaderboard, extended db storage).
+  const scoreboard = new Scoreboard({ logger: log, eventBus, storage });
+  container.register('scoreboard', scoreboard);
 
   // Load plugins + arenas independently
   try {
@@ -213,6 +219,7 @@ export async function createServer(config: ServerConfig) {
   app.route('/api/v1/models', createModelsRoutes());
   app.route('/api/v1/packages', createPackagesRoutes(packagesManager));
   app.route('/api/v1/artifacts', createArtifactRoutes(container, projectRoot));
+  app.route('/api/v1/scoreboard', createScoreboardRoutes(container));
 
   // Unversioned aliases for frontend compatibility
   app.route('/api', createApiRoutes(container));
@@ -226,6 +233,7 @@ export async function createServer(config: ServerConfig) {
   app.route('/api/models', createModelsRoutes());
   app.route('/api/packages', createPackagesRoutes(packagesManager));
   app.route('/api/artifacts', createArtifactRoutes(container, projectRoot));
+  app.route('/api/scoreboard', createScoreboardRoutes(container));
 
   // C.2: Deep health check (server uptime, db, plugin system)
   app.get('/health', async (c) => {
