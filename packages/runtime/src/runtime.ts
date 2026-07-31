@@ -11,7 +11,7 @@ import { MatchEngine } from '@ai-game-arena/match-engine';
 import type { MatchEngineConfig } from '@ai-game-arena/match-engine';
 import { ObservationSystem } from '@ai-game-arena/observation';
 import type { StorageAdapter } from '@ai-game-arena/sdk';
-import type { GameAdapter } from '@ai-game-arena/controller';
+import type { GameBridge } from '@ai-game-arena/controller';
 
 export interface BattleSession {
   id: string;
@@ -39,7 +39,7 @@ export interface RuntimeOptions {
   logger: Logger;
   eventBus: EventBus;
   storage: StorageAdapter;
-  adapterFactory?: (arenaId: string, agentId: string) => GameAdapter | null;
+  adapterFactory?: (arenaId: string) => GameBridge | null;
 }
 
 export class Runtime {
@@ -281,11 +281,17 @@ export class Runtime {
   getBattleRenderState(battleId: string): Record<string, unknown> | null {
     const session = this.battles.get(battleId);
     if (!session || !session.matchEngine) return null;
+
+    // With a bridge, the render state comes from the latest bridge observation.
+    const bridgeRenderState = session.matchEngine.getBridgeRenderState();
+    if (bridgeRenderState) return bridgeRenderState;
+
     const meState = session.matchEngine.getState();
     if (!meState.worldState) return null;
     const arena = this.arenas.get(session.arenaId);
     if (!arena) return null;
-    return arena.getRenderState(meState.worldState).data ?? null;
+    const renderState = arena.getRenderState(meState.worldState);
+    return { type: renderState.type, data: renderState.data, ...renderState.data };
   }
 
   getAllBattles(): BattleSession[] {

@@ -73,6 +73,14 @@ export type {
   GameState,
   NativeInputType,
   NativeInput,
+  BridgeConfig,
+  BridgeAction,
+  BridgeObservation,
+  BridgeGameState,
+  BridgeCapabilities,
+  BridgeEvent,
+  BridgeEventType,
+  GameBridge,
 } from './game';
 
 // Plugin system

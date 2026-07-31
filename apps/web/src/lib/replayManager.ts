@@ -216,7 +216,7 @@ export class ReplayManager {
     const event = this.data.events[this.index];
     return {
       index: this.index,
-      event,
+      event: event ?? null,
       turn: readTurn(event) ?? this.peekTurn(this.index - 1),
       done: false,
     };

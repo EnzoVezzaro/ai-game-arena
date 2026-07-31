@@ -8,11 +8,14 @@ import type {
   Observation,
   Logger,
   EventBus,
+  DomainEvent,
+  BridgeEvent,
+  BridgeObservation,
 } from '@ai-game-arena/sdk';
 import { AgentSandbox } from './agent-sandbox';
 import type { AgentSandboxOptions } from './agent-sandbox';
 import { Controller } from '@ai-game-arena/controller';
-import type { GameAdapter } from '@ai-game-arena/controller';
+import type { GameBridge } from '@ai-game-arena/controller';
 import { AgentRuntime } from '@ai-game-arena/agent-runtime';
 import { ObservationSystem } from '@ai-game-arena/observation';
 
@@ -54,7 +57,7 @@ export interface MatchEngineOptions {
   visibility?: 'perfect' | 'filtered' | 'private';
   observationFilter?: (observation: Observation, agentId: string) => Observation;
   observationSystem?: ObservationSystem;
-  adapterFactory?: (arenaId: string, agentId: string) => GameAdapter | null;
+  adapterFactory?: (arenaId: string) => GameBridge | null;
   onAgentBlocked?: (agentId: string, error: string) => void;
   onAgentUnblocked?: (agentId: string) => void;
 }
@@ -84,6 +87,17 @@ export function classifyError(message: string): ErrorCategory {
 
 const NON_RECOVERABLE: Set<ErrorCategory> = new Set(['auth', 'billing', 'rate-limit']);
 
+/** Events the engine can publish, including forwarded bridge events. */
+type ForwardableEvent =
+  | DomainEvent
+  | {
+      readonly type: string;
+      readonly aggregateId: string;
+      readonly timestamp: Date;
+      readonly payload: Record<string, unknown>;
+      readonly metadata: import('@ai-game-arena/sdk').EventMetadata;
+    };
+
 export class MatchEngine {
   private config: MatchEngineConfig;
   private arena: ArenaPlugin;
@@ -98,8 +112,9 @@ export class MatchEngine {
   private observationFilter?: (observation: Observation, agentId: string) => Observation;
   private observationSystem?: ObservationSystem;
   private battleId: string;
-  private adapterFactory?: (arenaId: string, agentId: string) => GameAdapter | null;
-  private gameAdapters: Map<string, GameAdapter> = new Map();
+  private adapterFactory?: (arenaId: string) => GameBridge | null;
+  private bridge: GameBridge | null = null;
+  private lastBridgeObservation: BridgeObservation | null = null;
   private agentErrors: Map<string, { category: ErrorCategory; message: string; turn: number }> = new Map();
   private agentRetries: Map<string, number> = new Map();
   private onAgentBlocked?: (agentId: string, error: string) => void;
@@ -150,6 +165,22 @@ export class MatchEngine {
       this.state.scores[agent.id] = 0;
     }
 
+    // Create one bridge for the game and initialize it. The engine talks to
+    // the game exclusively through the bridge (GAME_ENGINE.md).
+    const bridge = this.createBridge();
+    this.bridge = bridge;
+    if (bridge) {
+      // Subscribe before initialize so lifecycle events (ready, ...) are seen.
+      bridge.onEvent((event) => {
+        void this.onBridgeEvent(event);
+      });
+      await bridge.initialize({
+        id: this.arena.config.id,
+        seed: this.config.seed,
+        agentIds: this.agents.map((agent) => agent.id),
+      });
+    }
+
     // Create isolated sandbox for each agent
     for (const agent of this.agents) {
       const controller = new Controller({
@@ -157,12 +188,8 @@ export class MatchEngine {
         name: `Controller for ${agent.name}`,
       });
 
-      // Create a game adapter and register its tools with the controller
-      const adapter = this.createAdapterForAgent(agent);
-      if (adapter) {
-        adapter.registerTools(controller);
-        this.gameAdapters.set(agent.id, adapter);
-      }
+      // Register the bridge's action vocabulary with the agent's controller
+      bridge?.registerTools(controller);
 
       const runtime = new AgentRuntime({
         logger: this.logger.child({ component: 'agent-runtime', agentId: agent.id }),
@@ -175,10 +202,6 @@ export class MatchEngine {
         visibility: this.visibility,
         filterFn: this.observationFilter,
         onAction: (action) => {
-          // Forward device-level input to the adapter for translation
-          if (adapter) {
-            adapter.processInput(action);
-          }
           this.logger.debug(
             `Agent ${agent.name} performed action: ${action.device}.${action.action}`,
             {
@@ -238,28 +261,86 @@ export class MatchEngine {
     this.state.worldState = null;
   }
 
-  private createAdapterForAgent(agent: AgentConfig): GameAdapter | null {
+  private createBridge(): GameBridge | null {
     if (!this.adapterFactory) return null;
-    return this.adapterFactory(this.arena.config.id, agent.id);
+    return this.adapterFactory(this.arena.config.id);
+  }
+
+  private async getObservationForAgent(agentId: string): Promise<Observation> {
+    if (this.bridge) {
+      const obs = await this.bridge.observe(agentId);
+      this.lastBridgeObservation = obs;
+      return {
+        timestamp: obs.timestamp,
+        agentId,
+        type: 'board-state',
+        data: { content: obs.data, format: 'json' },
+        metadata: {
+          turnNumber: this.state.currentTurn,
+          gameState: this.state.phase,
+          availableActions: [],
+        },
+      };
+    }
+    return this.arena.getObservation(agentId, this.state.worldState!);
+  }
+
+  /** Forward bridge events to the engine's event bus (the engine does not interpret them). */
+  private async onBridgeEvent(event: BridgeEvent): Promise<void> {
+    await this.publishEvent({
+      type: 'BridgeEvent',
+      aggregateId: this.battleId,
+      timestamp: new Date(event.timestamp),
+      payload: {
+        bridge: this.bridge?.platform ?? 'unknown',
+        event: event.type,
+        data: event.data ?? null,
+      },
+      metadata: { correlationId: this.battleId, version: 1 },
+    });
+  }
+
+  /** Render state from the latest bridge observation (for the UI). */
+  getBridgeRenderState(): Record<string, unknown> | null {
+    if (!this.bridge || !this.lastBridgeObservation) return null;
+    const data = (this.lastBridgeObservation.data as Record<string, unknown>) ?? {};
+    return { type: this.bridge.platform, data, ...data };
   }
 
   private async runMatchLoop(): Promise<void> {
     while (this.state.phase === 'running') {
-      // Check win condition
-      const winCondition = this.arena.checkWinCondition(this.state.worldState!);
-      if (winCondition) {
-        this.state.scores[winCondition.winner] = (this.state.scores[winCondition.winner] ?? 0) + 1;
+      // Check win condition. With a bridge, the game reports its own end
+      // through getState(); the engine does not interpret game rules.
+      if (this.bridge) {
+        const bridgeState = await this.bridge.getState();
+        if (bridgeState.phase !== 'running' || !bridgeState.running) {
+          const winner = this.bridge.getWinner?.() ?? undefined;
+          await this.publishEvent({
+            type: 'WinConditionMet',
+            aggregateId: this.battleId,
+            timestamp: new Date(),
+            payload: { winner: winner ?? 'unknown', reason: `Bridge reported phase "${bridgeState.phase}"` },
+            metadata: { correlationId: this.battleId, version: 1 },
+          });
+          this.finish(winner, 'Bridge reported game over');
+          return;
+        }
+      } else {
+        const winCondition = this.arena.checkWinCondition(this.state.worldState!);
+        if (winCondition) {
+          this.state.scores[winCondition.winner] = (this.state.scores[winCondition.winner] ?? 0) + 1;
 
-        await this.publishEvent({
-          type: 'WinConditionMet',
-          aggregateId: this.battleId,
-          timestamp: new Date(),
-          payload: { winner: winCondition.winner, reason: winCondition.reason },
-          metadata: { correlationId: this.battleId, version: 1 },
-        });
+          await this.publishEvent({
+            type: 'WinConditionMet',
+            aggregateId: this.battleId,
+            timestamp: new Date(),
+            payload: { winner: winCondition.winner, reason: winCondition.reason },
+            metadata: { correlationId: this.battleId, version: 1 },
+          });
 
-        this.finish(winCondition.winner, winCondition.reason);
-        return;
+          this.finish(winCondition.winner, winCondition.reason);
+          return;
+        }
       }
 
       // Check max turns
@@ -286,14 +367,9 @@ export class MatchEngine {
         const agentStart = Date.now();
         const sandbox = this.sandboxes.get(agent.id)!;
 
-        // 0. Reset game adapter state for this turn
-        const adapter = this.gameAdapters.get(agent.id);
-        if (adapter && this.state.worldState) {
-          adapter.onTurnStart(agent.id, this.state.worldState);
-        }
-
-        // 1. Get observation for this agent (filtered by arena)
-        const rawObservation = this.arena.getObservation(agent.id, this.state.worldState!);
+        // 1. Get observation for this agent (from the bridge when present,
+        // otherwise filtered by the arena).
+        const rawObservation = await this.getObservationForAgent(agent.id);
 
         // 1b. Pass the observation through the ObservationSystem (if wired)
         if (this.observationSystem) {
@@ -422,31 +498,49 @@ export class MatchEngine {
           metadata: { correlationId: this.battleId, version: 1 },
         });
 
-        // 4b. Check if the game adapter has a translated action (from device-level input)
-        const adapterAction = adapter?.extractAction() ?? null;
-        const action = adapterAction ?? rawAction;
+        // 4b. Apply the action. With a bridge, the bridge is the game: it
+        // validates and applies the action itself. Otherwise the arena does.
+        const action = rawAction;
 
-        // 5. Validate action against world state
-        const validation = this.arena.validateAction(action, this.state.worldState!);
-
+        let validation: ValidationResult;
         let outcome: ActionOutcome;
-        if (validation.valid) {
-          // 6. Execute action (only the match engine sees the result)
-          outcome = this.arena.executeAction(action, this.state.worldState!);
+        if (this.bridge) {
+          await this.bridge.applyActions(agent.id, [
+            { type: action.type, payload: action.parameters },
+          ]);
+          validation = { valid: true };
+          outcome = { success: true, events: [] };
+          if (this.bridge.getScores) {
+            this.state.scores = this.bridge.getScores();
+          }
+        } else {
+          // 5. Validate action against world state
+          validation = this.arena.validateAction(action, this.state.worldState!);
+          if (validation.valid) {
+            // 6. Execute action (only the match engine sees the result)
+            outcome = this.arena.executeAction(action, this.state.worldState!);
 
-          // 7. Update world state
-          if (outcome.state) {
-            this.state.worldState = {
-              ...this.state.worldState!,
-              data: outcome.state,
-              turn: this.state.currentTurn,
+            // 7. Update world state
+            if (outcome.state) {
+              this.state.worldState = {
+                ...this.state.worldState!,
+                data: outcome.state,
+                turn: this.state.currentTurn,
+              };
+            }
+
+            // 8. Update scores
+            this.state.scores = this.arena.getScores(this.state.worldState!);
+          } else {
+            outcome = {
+              success: false,
+              events: [],
+              error: validation.error,
             };
           }
+        }
 
-          // 8. Update scores
-          const scores = this.arena.getScores(this.state.worldState!);
-          this.state.scores = scores;
-
+        if (validation.valid) {
           // 9. Publish ActionExecuted
           this.agentRetries.delete(agent.id);
           await this.publishEvent({
@@ -457,12 +551,6 @@ export class MatchEngine {
             metadata: { correlationId: this.battleId, version: 1 },
           });
         } else {
-          outcome = {
-            success: false,
-            events: [],
-            error: validation.error,
-          };
-
           // Publish ActionRejected
           await this.publishEvent({
             type: 'ActionRejected',
@@ -514,9 +602,9 @@ export class MatchEngine {
     return errors.map((e) => `${e.agentId.slice(0, 8)}: ${e.error.split('"')[0]?.slice(0, 60) ?? e.error}`).join('; ');
   }
 
-  private async publishEvent(event: Parameters<EventBus['publish']>[0]): Promise<void> {
+  private async publishEvent(event: ForwardableEvent): Promise<void> {
     if (this.eventBus) {
-      await this.eventBus.publish(event);
+      await this.eventBus.publish(event as DomainEvent);
     }
   }
 
@@ -529,7 +617,8 @@ export class MatchEngine {
       state: this.state,
       winner:
         this.state.phase === 'completed'
-          ? Object.entries(this.state.scores).sort(([, a], [, b]) => b - a)[0]?.[0]
+          ? (this.bridge?.getWinner?.() ??
+              Object.entries(this.state.scores).sort(([, a], [, b]) => b - a)[0]?.[0])
           : undefined,
       reason: this.state.phase === 'completed' ? 'Match completed' : undefined,
       turns: this.turnResults,

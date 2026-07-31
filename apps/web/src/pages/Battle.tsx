@@ -12,7 +12,7 @@ import { GameView } from '../components/battle/GameView';
 import { SpectatorChat } from '../components/battle/SpectatorChat';
 import type { Agent } from '../components/common/AgentCard';
 import { useBattleWebSocket } from '../hooks/useBattleWebSocket';
-import { useBattlePolls } from '../hooks/useBattlePolls';
+import { useBattlePolls, type PollOption } from '../hooks/useBattlePolls';
 import { ReplayManager, type ReplaySpeed } from '../lib/replayManager';
 
 interface BattleApi {
@@ -369,7 +369,7 @@ export function Battle() {
                 setReplayEvents([]);
                 replay.reset();
               }}
-              onSpeed={(s) => setReplaySpeed(s)}
+              onSpeed={(s) => setReplaySpeed(s as ReplaySpeed)}
             />
           ) : (
             <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
@@ -490,9 +490,16 @@ export function Battle() {
 
 /* ---- Spectator poll panel ---------------------------------------------- */
 
-type PollData = ReturnType<typeof useBattlePolls>['poll'];
+interface PollPanelData {
+  question: string;
+  options: PollOption[];
+  loading: boolean;
+  error: string | null;
+  vote: (optionIndex: number) => Promise<void>;
+  voted: null;
+}
 
-function PollPanel({ poll }: { poll: PollData }) {
+function PollPanel({ poll }: { poll: PollPanelData }) {
   const total = poll.options.reduce((s, x) => s + x.votes, 0) || 1;
   return (
     <div className="glass rounded-2xl p-3">

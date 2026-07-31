@@ -46,7 +46,7 @@ export class FunArena implements IArenaPlugin {
   }
 
   getRenderState(_state: WorldState): RenderState {
-    return { type: 'canvas', data: {} };
+    return { type: 'grid', data: {} };
   }
 }
 

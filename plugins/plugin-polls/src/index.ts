@@ -137,7 +137,11 @@ export async function activate(ctx: PluginContext): Promise<void> {
         if (!Number.isInteger(idx) || idx < 0 || idx >= poll.options.length) {
           throw new Error('Invalid option index');
         }
-        poll.options[idx] = { ...poll.options[idx], votes: poll.options[idx].votes + 1 };
+        const option = poll.options[idx];
+        if (!option) {
+          throw new Error('Invalid option index');
+        }
+        poll.options[idx] = { ...option, votes: option.votes + 1 };
         await ctx.storage.set(key(battleId), poll);
         return poll;
       },

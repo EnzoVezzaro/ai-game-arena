@@ -9,8 +9,9 @@ import { Tokens } from '@ai-game-arena/core';
 import type { Logger, EventBus } from '@ai-game-arena/sdk';
 import { PluginManager } from '@ai-game-arena/plugin-manager';
 import { Runtime } from '@ai-game-arena/runtime';
-import type { GameAdapter } from '@ai-game-arena/controller';
+import { createGameBridge } from './lib/game-bridge-factory';
 import { SqliteStorage } from '@ai-game-arena/storage';
+import type { GameBridge } from '@ai-game-arena/controller';
 import { createApiRoutes } from './routes/api';
 import { createBattleRoutes } from './routes/battles';
 import { createAgentHealthRoutes } from './routes/agent-health';
@@ -106,8 +107,8 @@ export async function createServer(config: ServerConfig) {
     logger: log,
     eventBus,
     storage,
-      adapterFactory: (_arenaId: string, _agentId: string): GameAdapter | null => {
-        return null;
+      adapterFactory: (arenaId: string): GameBridge | null => {
+        return createGameBridge(arenaId);
       },
   });
   container.register('runtime', runtime);

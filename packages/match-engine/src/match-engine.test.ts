@@ -1,6 +1,18 @@
 import { describe, it, expect } from 'bun:test';
 import { MatchEngine } from './match-engine';
-import type { ArenaPlugin, AgentConfig, DomainEvent } from '@ai-game-arena/sdk';
+import type { GameBridge } from '@ai-game-arena/controller';
+import type {
+  ArenaPlugin,
+  AgentConfig,
+  DomainEvent,
+  BridgeAction,
+  BridgeCapabilities,
+  BridgeConfig,
+  BridgeEvent,
+  BridgeGameState,
+  BridgeObservation,
+  Controller,
+} from '@ai-game-arena/sdk';
 
 function createTestArena(): ArenaPlugin {
   return {
@@ -141,5 +153,105 @@ describe('MatchEngine', () => {
     await engine.start();
 
     expect(receivedAgentIds).toEqual(['agent-1', 'agent-2']);
+  });
+
+  it('drives the game exclusively through the bridge (GAME_ENGINE.md)', async () => {
+    const calls: string[] = [];
+    const observed: string[] = [];
+    const applied: Array<{ playerId: string; actions: BridgeAction[] }> = [];
+    const captured = { config: null as BridgeConfig | null };
+
+    const bridge: GameBridge = {
+      platform: 'html',
+      capabilities: {
+        keyboard: true,
+        mouse: true,
+        gamepad: false,
+        touch: false,
+        screenshot: true,
+        structuredState: true,
+        audio: false,
+      } satisfies BridgeCapabilities,
+      registerTools(_controller: Controller): void {
+        calls.push('registerTools');
+      },
+      async initialize(config: BridgeConfig): Promise<void> {
+        captured.config = config;
+        calls.push('initialize');
+      },
+      async reset(): Promise<void> {
+        calls.push('reset');
+      },
+      async pause(): Promise<void> {
+        calls.push('pause');
+      },
+      async resume(): Promise<void> {
+        calls.push('resume');
+      },
+      async dispose(): Promise<void> {
+        calls.push('dispose');
+      },
+      async applyActions(playerId: string, actions: BridgeAction[]): Promise<void> {
+        applied.push({ playerId, actions });
+        calls.push('applyActions');
+      },
+      async observe(playerId: string): Promise<BridgeObservation> {
+        observed.push(playerId);
+        calls.push('observe');
+        return { timestamp: Date.now(), data: { frame: observed.length } };
+      },
+      async getState(): Promise<BridgeGameState> {
+        calls.push('getState');
+        return { phase: 'running', running: true };
+      },
+      onEvent(handler: (event: BridgeEvent) => void): void {
+        handler({ type: 'goal', timestamp: Date.now(), data: { player: 'agent-1' } });
+      },
+    };
+
+    const domainEvents: DomainEvent[] = [];
+    const eventBus = {
+      async publish(event: DomainEvent) {
+        domainEvents.push(event);
+      },
+      subscribe() { return { id: '1', unsubscribe() {} }; },
+      subscribeAll() {},
+      unsubscribe() {},
+    };
+
+    const engine = new MatchEngine(createTestArena(), createAgents(), {
+      maxTurns: 1,
+      turnTimeout: 5000,
+      seed: 42,
+    }, {
+      logger: createNoopLogger() as never,
+      eventBus,
+      battleId: 'bridge-battle',
+      adapterFactory: () => bridge,
+    });
+
+    await engine.start();
+
+    expect(captured.config).toEqual({
+      id: 'test-arena',
+      seed: 42,
+      agentIds: ['agent-1', 'agent-2'],
+    });
+    expect(calls).toContain('initialize');
+    expect(calls).toContain('registerTools');
+    expect(observed).toContain('agent-1');
+    expect(observed).toContain('agent-2');
+    expect(calls).toContain('getState');
+
+    // Agents have no LLM provider in this test, so no actions are applied.
+    expect(applied).toEqual([]);
+
+    // Bridge events are forwarded to the engine's event bus.
+    expect(domainEvents.some((e) => (e as { type: string }).type === 'BridgeEvent')).toBe(true);
+
+    // The render state comes from the latest bridge observation.
+    const renderState = engine.getBridgeRenderState();
+    expect(renderState?.type).toBe('html');
+    expect(renderState?.data).toEqual({ frame: 2 });
   });
 });
