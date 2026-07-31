@@ -148,6 +148,12 @@ export class BattleTanksBridge implements GameBridge {
     return this.html.getState();
   }
 
+  /** Render payload for spectators/UI — separate from the agent observation. */
+  getRenderState(): Record<string, unknown> | null {
+    const data = (this.host.capture() ?? {}) as Record<string, unknown>;
+    return { type: this.platform, data, ...data };
+  }
+
   /** Engine convenience: current scores (not part of the bridge contract). */
   getScores(): Record<string, number> {
     return this.host.getScores();

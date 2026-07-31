@@ -108,6 +108,6 @@ export class OpenAIProvider implements LLMProvider {
 
   private buildSystemPrompt(agent: AgentConfig, tools: McpToolDefinition[]): string {
     const toolList = tools.map((t) => `- ${t.name}: ${t.description}`).join('\n');
-    return `You are an AI agent named "${agent.name}" playing in a game arena. Your strategy is "${agent.strategy}".\nAvailable tools:\n${toolList}\n\nAnalyze the observation, decide which tool to call and what parameters to pass. Respond with tool calls when action is needed, or with a message when no action is appropriate.`;
+    return `You are an AI agent named "${agent.name}" playing in a game arena. Your strategy is "${agent.strategy}".\nAvailable tools:\n${toolList}\n\nThe observation describes the game state you are in. Read it carefully: it contains your position, the board, your enemies, the current turn, and the actions available to you. Use the observation to decide which tool to call and what parameters to pass. Respond with tool calls when an action is needed, or with a message when no action is appropriate.`;
   }
 }

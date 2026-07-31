@@ -129,6 +129,68 @@ export class BattleTanksHost implements HtmlGameHost {
     };
   }
 
+  /**
+   * Player-facing observation: a readable description of the board plus
+   * structured data. This is what the agent actually sees (the render HTML
+   * stays out of the observation). The engine treats it as opaque data.
+   */
+  captureObservation(playerId: string): unknown {
+    if (!this.state) return null;
+    const { gridWidth, gridHeight, tanks, turn, phase } = this.state;
+    const you = tanks[playerId] ?? null;
+    const others = Object.entries(tanks)
+      .filter(([id]) => id !== playerId)
+      .map(([id, t]) => ({ id, x: t.x, y: t.y, health: t.health, alive: t.alive }));
+
+    // ASCII map: you are ▲, alive enemies are ◼, dead enemies are ✕, empty . 
+    const rows: string[] = [];
+    for (let y = 0; y < gridHeight; y++) {
+      const row: string[] = [];
+      for (let x = 0; x < gridWidth; x++) {
+        if (you && you.x === x && you.y === y && you.alive) row.push('▲');
+        else if (others.some((o) => o.x === x && o.y === y && o.alive)) row.push('◼');
+        else if (others.some((o) => o.x === x && o.y === y && !o.alive)) row.push('✕');
+        else row.push('.');
+      }
+      rows.push(row.join(' '));
+    }
+    const map = ['BOARD: (▲ = you, ◼ = enemy, ✕ = destroyed, . = empty)', ...rows.map((r) => `  ${r}`)].join('\n');
+
+    const lines = [
+      `You are playing Battle Tanks on a ${gridWidth}x${gridHeight} grid (columns 0-${gridWidth - 1} left to right, rows 0-${gridHeight - 1} top to bottom).`,
+      '',
+      map,
+      '',
+      you
+        ? `YOUR TANK: you are at (${you.x},${you.y}) with ${you.health} HP, alive: ${you.alive}.`
+        : 'YOUR TANK: unknown.',
+      'ENEMY TANKS:',
+      ...(others.length > 0
+        ? others.map((o) => `- Tank at (${o.x},${o.y}) with ${o.health} HP, alive: ${o.alive}.`)
+        : ['- none']),
+      '',
+      `TURN: ${turn} — PHASE: ${phase}`,
+      '',
+      'ACTIONS AVAILABLE: move(direction: up|down|left|right), attack(targetX, targetY), scan(x, y), shield(), pass().',
+      'RULES:',
+      '- Take exactly one action per turn.',
+      '- You cannot move outside the grid; moving into a wall does nothing.',
+      '- attack(targetX, targetY) damages any enemy tank occupying that cell for 35 HP.',
+      '- You win by being the last tank alive. If the game is over, just pass().',
+    ].join('\n');
+
+    return {
+      text: lines,
+      grid: { width: gridWidth, height: gridHeight },
+      turn,
+      phase,
+      you: you ? { id: playerId, x: you.x, y: you.y, health: you.health, alive: you.alive } : null,
+      tanks: others,
+      availableActions: ['move', 'attack', 'scan', 'shield', 'pass'],
+      winner: this.winner,
+    };
+  }
+
   getScores(): Record<string, number> {
     if (!this.state) return {};
     const scores: Record<string, number> = {};

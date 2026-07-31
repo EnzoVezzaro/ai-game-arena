@@ -15,4 +15,10 @@ export interface GameBridge extends GameBridgeContract {
   getScores?(): Record<string, number>;
   /** Optional engine convenience: winning player id when the game is over. */
   getWinner?(): string | null;
+  /**
+   * Optional render payload for spectators/UI (e.g. html + units). Separate
+   * from `observe()`, which returns the agent-facing observation. When absent
+   * the engine falls back to the last bridge observation.
+   */
+  getRenderState?(): Record<string, unknown> | null;
 }

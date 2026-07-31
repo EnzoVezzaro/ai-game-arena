@@ -271,6 +271,10 @@ export class MatchEngine {
     if (this.bridge) {
       const obs = await this.bridge.observe(agentId);
       this.lastBridgeObservation = obs;
+      const data = (obs.data ?? {}) as Record<string, unknown>;
+      const availableActions = Array.isArray(data.availableActions)
+        ? (data.availableActions as string[])
+        : [];
       return {
         timestamp: obs.timestamp,
         agentId,
@@ -279,7 +283,7 @@ export class MatchEngine {
         metadata: {
           turnNumber: this.state.currentTurn,
           gameState: this.state.phase,
-          availableActions: [],
+          availableActions,
         },
       };
     }
@@ -301,9 +305,12 @@ export class MatchEngine {
     });
   }
 
-  /** Render state from the latest bridge observation (for the UI). */
+  /** Render state from the bridge (for the UI), separate from observations. */
   getBridgeRenderState(): Record<string, unknown> | null {
-    if (!this.bridge || !this.lastBridgeObservation) return null;
+    if (!this.bridge) return null;
+    const renderState = this.bridge.getRenderState?.();
+    if (renderState) return renderState;
+    if (!this.lastBridgeObservation) return null;
     const data = (this.lastBridgeObservation.data as Record<string, unknown>) ?? {};
     return { type: this.bridge.platform, data, ...data };
   }

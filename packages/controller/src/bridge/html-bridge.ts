@@ -29,6 +29,13 @@ export interface HtmlGameHost {
   dispose(): void | Promise<void>;
   /** Optional: game-originated events (goal, checkpoint, coin, death, ...). */
   onGameEvent?(handler: (type: string, data?: unknown) => void): void;
+  /**
+   * Optional: a player-facing structured observation (positions, board,
+   * available actions). When absent, the bridge falls back to `capture()`.
+   * The engine treats the observation as opaque data; a readable observation
+   * lets the agent actually play the game.
+   */
+  captureObservation?(playerId: string): unknown | Promise<unknown>;
 }
 
 export interface HTMLBridgeOptions {
@@ -142,7 +149,11 @@ export class HTMLBridge extends BridgeEventEmitter implements GameBridge {
     if (!this.initialized || !this.host) {
       throw new Error('HTMLBridge is not initialized');
     }
-    const data = await this.host.capture();
+    // Prefer the host's structured, player-facing observation so the agent can
+    // actually read the game; fall back to the raw render capture otherwise.
+    const data = this.host.captureObservation
+      ? await this.host.captureObservation(_playerId)
+      : await this.host.capture();
     return { timestamp: Date.now(), data };
   }
 

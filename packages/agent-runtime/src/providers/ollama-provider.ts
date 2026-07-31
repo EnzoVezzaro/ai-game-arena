@@ -73,7 +73,9 @@ export class OllamaProvider implements LLMProvider {
 Available tools:
 ${toolList}
 
-Analyze the observation, decide which tool to call and what parameters to pass.
+The observation describes the game state you are in. Read it carefully: it contains your position, the board,
+your enemies, the current turn, and the actions available to you. Use the observation to decide which tool to call
+and what parameters to pass.
 Respond with JSON: {"toolCalls":[{"name":"toolName","parameters":{"arg":"value"}}]} when action is needed,
 or with a descriptive message when no action is appropriate.`;
   }
