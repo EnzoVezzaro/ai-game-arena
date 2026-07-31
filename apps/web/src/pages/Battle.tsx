@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { categoryMeta } from '../lib/arena';
 import { Icon } from '../lib/Icon';
@@ -8,8 +8,12 @@ import { PageLoader } from '../components/common/PageLoader';
 import { AgentRoster, type Unit } from '../components/battle/AgentRoster';
 import { EventLog, type BattleEventItem } from '../components/battle/EventLog';
 import { TurnTimeline } from '../components/battle/TurnTimeline';
+import { GameView } from '../components/battle/GameView';
+import { SpectatorChat } from '../components/battle/SpectatorChat';
 import type { Agent } from '../components/common/AgentCard';
 import { useBattleWebSocket } from '../hooks/useBattleWebSocket';
+import { useBattlePolls } from '../hooks/useBattlePolls';
+import { ReplayManager, type ReplaySpeed } from '../lib/replayManager';
 
 interface BattleApi {
   id: string;
@@ -23,8 +27,11 @@ interface BattleApi {
   };
   renderState?: {
     type?: string;
+    data?: Record<string, unknown>;
     grid_size?: number;
     units?: Unit[];
+    html?: string;
+    url?: string;
     currentTurn?: string;
     moveHistory?: Array<Record<string, unknown>>;
   };
@@ -32,15 +39,6 @@ interface BattleApi {
   startedAt?: number;
   finishedAt?: number;
 }
-
-const POLL = {
-  question: 'Who wins this battle?',
-  options: [
-    { text: 'The aggressor', votes: 142 },
-    { text: 'The defensive hold', votes: 88 },
-    { text: 'It ends in a draw', votes: 34 },
-  ],
-};
 
 function Chip({ label, icon }: { label: string; icon: string }) {
   return (
@@ -84,15 +82,35 @@ function TabBtn({
 
 export function Battle() {
   const { id } = useParams();
+  const [params] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [battle, setBattle] = useState<BattleApi | null>(null);
   const [events, setEvents] = useState<BattleEventItem[]>([]);
   const [status, setStatus] = useState<string>('waiting');
-  const [speed, setSpeed] = useState(1);
   const [tab, setTab] = useState<'events' | 'chat'>('events');
-  const [poll, setPoll] = useState(POLL);
+  // Replay-only playback speed (ReplayManager). Live battles have no speed knob.
+  const [replaySpeed, setReplaySpeed] = useState<ReplaySpeed>(1);
 
   const { connected, events: wsEvents, subscribe } = useBattleWebSocket();
+  const pollState = useBattlePolls(id);
+  // Normalised poll view rendered by <PollPanel> below.
+  const poll = {
+    question: pollState.poll?.question ?? '',
+    options: pollState.poll?.options ?? [],
+    loading: pollState.loading,
+    error: pollState.error,
+    vote: pollState.vote,
+    voted: null,
+  };
+
+  // A battle is in replay mode when it is finished/aborted, or when the user
+  // explicitly opens it with ?replay=1. In replay the ReplayManager drives the
+  // event stream and exposes SPEED controls; in live there is no SPEED knob.
+  const isReplay = (status === 'completed' || status === 'finished' || status === 'aborted') || params.get('replay') === '1';
+
+  const replayRef = useRef<ReplayManager | null>(null);
+  if (!replayRef.current) replayRef.current = new ReplayManager({ initialSpeed: 1 });
+  const replay = replayRef.current!;
 
   // Load battle + initial events
   useEffect(() => {
@@ -141,6 +159,53 @@ export function Battle() {
     if (id) subscribe(id);
   }, [id, subscribe]);
 
+  // Replay playback — only for finished/aborted battles. The ReplayManager owns
+  // playback speed here; live battles don't expose SPEED (we cannot predict when
+  // an AI will act in live mode). See docs/battles/replay.md.
+  const [replayEvents, setReplayEvents] = useState<BattleEventItem[]>([]);
+  const [replayStepIndex, setReplayStepIndex] = useState(0);
+  const [replayTotalEvents, setReplayTotalEvents] = useState(0);
+
+  useEffect(() => {
+    if (!id || !isReplay) return;
+    const mgr = replay;
+    let cancelled = false;
+    mgr.load(id).then(() => {
+      if (cancelled) return;
+      setReplayTotalEvents(mgr.totalEvents);
+      mgr.setOnStep((s) => {
+        if (cancelled) return;
+        setReplayStepIndex(s.index);
+        if (s.event) {
+          const p = (s.event.payload ?? {}) as { turn?: number; summary?: string };
+          setReplayEvents((prev) => {
+            const next: BattleEventItem = {
+              type: s.event!.type,
+              turn: p.turn,
+              summary: p.summary || s.event!.type,
+              timestamp: s.event!.timestamp,
+            };
+            // Replace any transient entry we appended; keep order.
+            return [...prev, next].slice(-200);
+          });
+        }
+      });
+      mgr.setSpeed(replaySpeed);
+      // Start paused so the spectator controls playback.
+      mgr.pause();
+    });
+    return () => {
+      cancelled = true;
+      mgr.pause();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isReplay]);
+
+  // Sync the replay manager's speed when the replay SPEED knob changes.
+  useEffect(() => {
+    if (isReplay) replay.setSpeed(replaySpeed);
+  }, [replaySpeed, isReplay, replay]);
+
   // Track which agents are currently thinking
   const [thinkingAgents, setThinkingAgents] = useState<Set<string>>(new Set());
 
@@ -170,6 +235,18 @@ export function Battle() {
       summary = `❌ ${(payload?.agentId as string)?.slice(0, 12)}… ${payload?.error ?? 'Unknown error'}`;
     } else if (recent.eventType === 'ActionRejected') {
       summary = `⛔ ${(payload?.agentId as string)?.slice(0, 12)}… ${payload?.reason ?? 'Invalid'}`;
+    } else if (recent.eventType === 'BattleStarted' || recent.eventType === 'BattleResumed') {
+      setStatus('running');
+      summary = recent.eventType === 'BattleStarted' ? 'Battle started' : 'Battle resumed';
+    } else if (recent.eventType === 'BattlePaused') {
+      setStatus('paused');
+      summary = 'Battle paused';
+    } else if (recent.eventType === 'BattleFinished') {
+      setStatus('completed');
+      summary = `Battle finished${payload?.reason ? ` — ${payload.reason}` : ''}`;
+    } else if (recent.eventType === 'BattleAborted') {
+      setStatus('aborted');
+      summary = `Battle aborted${payload?.reason ? ` — ${payload.reason}` : ''}`;
     } else {
       summary = (payload?.summary as string) || recent.eventType;
     }
@@ -189,10 +266,13 @@ export function Battle() {
     async (action: 'start' | 'pause' | 'resume' | 'abort') => {
       try {
         await fetch(`/api/battles/${id}/${action}`, { method: 'POST' });
+        // The action endpoints (start/pause/resume/abort) return a small {status} body,
+        // not a full BattleApi. Re-fetch the battle to read the authoritative phase.
         const r = await fetch(`/api/battles/${id}`).then((r) => (r.ok ? r.json() : null));
         if (r) {
           setBattle(r as BattleApi);
-          setStatus((r as BattleApi).state?.phase || status);
+          const phase = (r as BattleApi).state?.phase || status;
+          setStatus(phase === 'resumed' ? 'running' : phase);
         }
       } catch {
         /* ignore */
@@ -219,10 +299,16 @@ export function Battle() {
     [battle],
   );
 
-  const gridState = battle?.renderState as { grid_size?: number; units?: Unit[] } | undefined;
-  const hasGrid = gridState && gridState.grid_size && Array.isArray(gridState.units);
-  const turn = battle?.state?.currentTurn ?? 0;
-  const maxTurns = (battle?.config as { maxTurns?: number } | undefined)?.maxTurns ?? 30;
+  const renderState = battle?.renderState ?? null;
+  const units = (battle?.renderState as { units?: Unit[] } | undefined)?.units ?? [];
+  const turn = isReplay ? replay.turnAt(replayStepIndex) : battle?.state?.currentTurn ?? 0;
+  // Live battles run until win/pause/abort (Infinity — see docs/battles/lifecycle.md).
+  // In replay we surface progress against the recorded event count.
+  const maxTurns = isReplay && replayTotalEvents > 0 ? replayTotalEvents : undefined;
+
+  // Live battles show their live events; replays show the replay manager's
+  // stepped playback of the recorded event stream.
+  const displayEvents = isReplay ? replayEvents : events;
 
   if (loading) return <PageLoader label="Composing battle" />;
   if (!battle)
@@ -270,45 +356,49 @@ export function Battle() {
         </div>
         {/* Controls */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
-            {status === 'running' ? (
+          {isReplay ? (
+            <ReplayControls
+              total={replayTotalEvents}
+              index={replayStepIndex}
+              speed={replaySpeed}
+              onPlay={() => replay.play()}
+              onPause={() => replay.pause()}
+              onStep={() => replay.step()}
+              onStepBack={() => replay.stepBack()}
+              onReset={() => {
+                setReplayEvents([]);
+                replay.reset();
+              }}
+              onSpeed={(s) => setReplaySpeed(s)}
+            />
+          ) : (
+            <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
+              {status === 'running' ? (
+                <button
+                  onClick={() => patchStatus('pause')}
+                  className="p-1.5 rounded-md hover:bg-muted"
+                  aria-label="Pause"
+                >
+                  <Icon name="Pause" size={14} />
+                </button>
+              ) : (
+                <button
+                  onClick={() => (status === 'paused' ? patchStatus('resume') : patchStatus('start'))}
+                  className="p-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+                  aria-label="Play"
+                >
+                  <Icon name="Play" size={14} />
+                </button>
+              )}
               <button
-                onClick={() => patchStatus('pause')}
-                className="p-1.5 rounded-md hover:bg-muted"
-                aria-label="Pause"
+                onClick={() => patchStatus('abort')}
+                className="p-1.5 rounded-md hover:bg-muted text-destructive"
+                aria-label="Abort"
               >
-                <Icon name="Pause" size={14} />
+                <Icon name="Octagon" size={14} />
               </button>
-            ) : (
-              <button
-                onClick={() => (status === 'paused' ? patchStatus('resume') : patchStatus('start'))}
-                className="p-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
-                aria-label="Play"
-              >
-                <Icon name="Play" size={14} />
-              </button>
-            )}
-            <button
-              onClick={() => patchStatus('abort')}
-              className="p-1.5 rounded-md hover:bg-muted text-destructive"
-              aria-label="Abort"
-            >
-              <Icon name="Octagon" size={14} />
-            </button>
-          </div>
-          <div className="flex items-center gap-2 ml-2">
-            <span className="font-mono text-[10px] text-muted-foreground">SPEED</span>
-            <select
-              value={speed}
-              onChange={(e) => setSpeed(Number(e.target.value))}
-              className="bg-muted/50 border border-border rounded px-2 py-1 text-xs font-mono outline-none text-foreground"
-            >
-              <option value={0.5}>0.5x</option>
-              <option value={1}>1x</option>
-              <option value={2}>2x</option>
-              <option value={4}>4x</option>
-            </select>
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -326,141 +416,21 @@ export function Battle() {
                 Agent Roster
               </span>
             </div>
-            <AgentRoster agents={agents} units={hasGrid ? gridState!.units : []} thinking={thinkingAgents} />
+            <AgentRoster agents={agents} units={units} thinking={thinkingAgents} />
           </div>
-          <div className="glass rounded-2xl p-3">
-            <div className="flex items-center gap-2 mb-2 px-1">
-              <Icon name="ThumbsUp" size={13} className="text-primary" />
-              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                Spectator Poll
-              </span>
-            </div>
-            <div className="text-xs text-foreground/80 mb-2">{poll.question}</div>
-            <div className="space-y-1.5">
-              {poll.options.map((o, i) => {
-                const total = poll.options.reduce((s, x) => s + x.votes, 0) || 1;
-                const pct = Math.round((o.votes / total) * 100);
-                return (
-                  <button
-                    key={i}
-                    onClick={() =>
-                      setPoll((p) => ({
-                        ...p,
-                        options: p.options.map((x, idx) =>
-                          idx === i ? { ...x, votes: x.votes + 1 } : x,
-                        ),
-                      }))
-                    }
-                    className="w-full text-left rounded-lg border border-border bg-card/40 px-2.5 py-1.5 hover:border-primary/40 transition-colors"
-                  >
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span>{o.text}</span>
-                      <span className="font-mono text-muted-foreground">{o.votes}</span>
-                    </div>
-                    <div className="mt-1 h-1 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-primary to-accent"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <PollPanel poll={poll} />
         </div>
 
-        {/* Center: arena grid */}
+        {/* Center: the selected game (rendered from the arena's renderState) */}
         <div className="space-y-3 order-1 lg:order-2">
           <div className="glass rounded-2xl p-3 lg:p-4">
-            {hasGrid ? (
-              <div className="relative w-full">
-                <div className="relative aspect-square w-full max-w-[560px] mx-auto rounded-2xl border border-border bg-background/60 overflow-hidden scanline">
-                  <div className="absolute inset-0 arena-grid-bg opacity-60" />
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background: `radial-gradient(40rem 40rem at 50% 50%, ${accent}10, transparent 60%)`,
-                    }}
-                  />
-                  <div className="absolute inset-x-0 h-16 bg-gradient-to-b from-primary/10 to-transparent animate-scan pointer-events-none" />
-                  <div
-                    className="relative grid h-full w-full p-3"
-                    style={{
-                      gridTemplateColumns: `repeat(${gridState!.grid_size}, 1fr)`,
-                      gridTemplateRows: `repeat(${gridState!.grid_size}, 1fr)`,
-                    }}
-                  >
-                    {Array.from({ length: gridState!.grid_size! ** 2 }, (_, i) => {
-                      const n = gridState!.grid_size!;
-                      const x = i % n;
-                      const y = Math.floor(i / n);
-                      const unit = (gridState!.units || []).find(
-                        (u) => u.alive !== false && u.x === x && u.y === y,
-                      );
-                      return (
-                        <div key={i} className="relative flex items-center justify-center">
-                          {unit && (
-                            <div
-                              className="relative h-[82%] w-[82%] rounded-lg flex items-center justify-center font-mono font-bold text-sm"
-                              style={{
-                                background: `linear-gradient(140deg, ${unit.color}40, ${unit.color}15)`,
-                                border: `1.5px solid ${unit.color}`,
-                                color: unit.color,
-                              }}
-                            >
-                              {unit.symbol}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="absolute top-2 left-2 font-mono text-[9px] text-muted-foreground tracking-wider">
-                    GRID {gridState!.grid_size}×{gridState!.grid_size}
-                  </div>
-                  <div className="absolute top-2 right-2 font-mono text-[9px] text-primary tracking-wider">
-                    TURN {turn}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="relative aspect-square w-full max-w-[560px] mx-auto rounded-2xl border border-border bg-background/60 overflow-hidden scanline flex flex-col items-center justify-center gap-3">
-                <div className="absolute inset-0 arena-grid-bg opacity-40" />
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: `radial-gradient(40rem 40rem at 50% 50%, ${accent}10, transparent 60%)`,
-                  }}
-                />
-                <div className="absolute inset-x-0 h-16 bg-gradient-to-b from-primary/10 to-transparent animate-scan pointer-events-none" />
-                <div className="relative flex flex-col items-center gap-3 text-center">
-                  <div
-                    className="h-12 w-12 rounded-xl flex items-center justify-center"
-                    style={{
-                      background: `${accent}22`,
-                      border: `1px solid ${accent}55`,
-                      color: accent,
-                    }}
-                  >
-                    <Icon name="Radio" size={20} className="animate-pulse-glow" />
-                  </div>
-                  <div>
-                    <div className="font-display text-sm font-bold">Live grid unavailable</div>
-                    <p className="text-[11px] text-muted-foreground mt-1 max-w-xs px-4">
-                      This battle streams events rather than a renderable grid. Watch the event
-                      stream on the right.
-                    </p>
-                  </div>
-                </div>
-                <div className="absolute top-2 left-2 font-mono text-[9px] text-muted-foreground tracking-wider">
-                  {arenaSlug}
-                </div>
-                <div className="absolute top-2 right-2 font-mono text-[9px] text-primary tracking-wider">
-                  TURN {turn}
-                </div>
-              </div>
-            )}
+            <GameView
+              renderState={renderState}
+              accent={accent}
+              turn={turn}
+              replay={isReplay}
+              arenaSlug={arenaSlug}
+            />
           </div>
 
           {/* Scoreboard (graceful — scores not served by backend) */}
@@ -488,15 +458,15 @@ export function Battle() {
           </div>
         </div>
 
-        {/* Right: tabs events / chat */}
-        <div className="order-3 glass rounded-2xl overflow-hidden h-[420px] lg:h-auto lg:min-h-[560px] flex flex-col">
+        {/* Right: tabs events / chat. Fixed height so the stream scrolls. */}
+        <div className="order-3 glass rounded-2xl overflow-hidden h-[560px] lg:h-[560px] flex flex-col">
           <div className="flex border-b border-border">
             <TabBtn
               active={tab === 'events'}
               onClick={() => setTab('events')}
               icon="ListTree"
               label="Events"
-              badge={events.length}
+              badge={displayEvents.length}
             />
             <TabBtn
               active={tab === 'chat'}
@@ -507,26 +477,140 @@ export function Battle() {
           </div>
           <div className="flex-1 min-h-0">
             {tab === 'events' ? (
-              <EventLog events={events} />
+              <EventLog events={displayEvents} />
             ) : (
-              <div className="flex flex-col h-full">
-                <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
-                  <Icon name="MessageSquare" size={13} className="text-primary" />
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                    Spectator Chat
-                  </span>
-                </div>
-                <div className="flex-1 overflow-y-auto scrollbar-thin p-3">
-                  <p className="text-center text-xs text-muted-foreground py-12">
-                    Spectator chat requires a chat backend. <br />
-                    Wire a chat plugin to enable channels.
-                  </p>
-                </div>
-              </div>
+              <SpectatorChat battleId={battle.id} />
             )}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ---- Spectator poll panel ---------------------------------------------- */
+
+type PollData = ReturnType<typeof useBattlePolls>['poll'];
+
+function PollPanel({ poll }: { poll: PollData }) {
+  const total = poll.options.reduce((s, x) => s + x.votes, 0) || 1;
+  return (
+    <div className="glass rounded-2xl p-3">
+      <div className="flex items-center gap-2 mb-2 px-1">
+        <Icon name="ThumbsUp" size={13} className="text-primary" />
+        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          Spectator Poll
+        </span>
+      </div>
+      {poll.loading && poll.options.length === 0 && (
+        <div className="text-[11px] text-muted-foreground py-3 text-center">Loading poll…</div>
+      )}
+      {poll.error && poll.options.length === 0 && (
+        <div className="text-[11px] text-muted-foreground py-3 text-center">
+          Poll unavailable
+        </div>
+      )}
+      {poll.options.length > 0 && (
+        <>
+          <div className="text-xs text-foreground/80 mb-2">{poll.question}</div>
+          <div className="space-y-1.5">
+            {poll.options.map((o, i) => {
+              const pct = Math.round((o.votes / total) * 100);
+              return (
+                <button
+                  key={i}
+                  onClick={() => poll.vote(i)}
+                  disabled={poll.voted != null}
+                  className="w-full text-left rounded-lg border border-border bg-card/40 px-2.5 py-1.5 hover:border-primary/40 transition-colors disabled:opacity-70"
+                >
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span>{o.text}</span>
+                    <span className="font-mono text-muted-foreground">{o.votes}</span>
+                  </div>
+                  <div className="mt-1 h-1 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-primary to-accent"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ---- Replay transport controls ----------------------------------------- */
+
+function ReplayControls(props: {
+  total: number;
+  index: number;
+  speed: number;
+  onPlay: () => void;
+  onPause: () => void;
+  onStep: () => void;
+  onStepBack: () => void;
+  onReset: () => void;
+  onSpeed: (s: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
+        <button
+          onClick={props.onReset}
+          className="p-1.5 rounded-md hover:bg-muted"
+          aria-label="Reset"
+        >
+          <Icon name="RotateCcw" size={14} />
+        </button>
+        <button
+          onClick={props.onStepBack}
+          className="p-1.5 rounded-md hover:bg-muted"
+          aria-label="Step back"
+        >
+          <Icon name="Rewind" size={14} />
+        </button>
+        <button
+          onClick={props.onPlay}
+          className="p-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+          aria-label="Play"
+        >
+          <Icon name="Play" size={14} />
+        </button>
+        <button
+          onClick={props.onPause}
+          className="p-1.5 rounded-md hover:bg-muted"
+          aria-label="Pause"
+        >
+          <Icon name="Pause" size={14} />
+        </button>
+        <button
+          onClick={props.onStep}
+          className="p-1.5 rounded-md hover:bg-muted"
+          aria-label="Step"
+        >
+          <Icon name="FastForward" size={14} />
+        </button>
+      </div>
+      <div className="flex items-center gap-2 ml-1">
+        <span className="font-mono text-[10px] text-muted-foreground">SPEED</span>
+        <select
+          value={props.speed}
+          onChange={(e) => props.onSpeed(Number(e.target.value))}
+          className="bg-muted/50 border border-border rounded px-2 py-1 text-xs font-mono outline-none text-foreground"
+        >
+          <option value={0.5}>0.5x</option>
+          <option value={1}>1x</option>
+          <option value={2}>2x</option>
+          <option value={4}>4x</option>
+        </select>
+      </div>
+      <span className="font-mono text-[10px] text-muted-foreground ml-2">
+        {props.index}/{props.total || 0}
+      </span>
     </div>
   );
 }

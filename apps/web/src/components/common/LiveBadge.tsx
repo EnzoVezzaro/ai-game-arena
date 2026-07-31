@@ -18,6 +18,7 @@ const MAP: Record<string, BadgeEntry> = {
   running: { dot: 'bg-success', text: 'text-success', label: 'LIVE' },
   paused: { dot: 'bg-warning', text: 'text-warning', label: 'PAUSED' },
   finished: { dot: 'bg-primary', text: 'text-primary', label: 'FINISHED' },
+  completed: { dot: 'bg-primary', text: 'text-primary', label: 'FINISHED' },
   waiting: { dot: 'bg-muted-foreground', text: 'text-muted-foreground', label: 'WAITING' },
   aborted: { dot: 'bg-destructive', text: 'text-destructive', label: 'ABORTED' },
 };

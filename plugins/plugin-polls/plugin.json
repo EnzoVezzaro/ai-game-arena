@@ -11,6 +11,7 @@
   "dependencies": {},
   "contributions": {
     "mcpTools": ["create_poll", "vote_poll"],
-    "eventHandlers": ["MATCH_STARTED"]
+    "eventHandlers": ["MATCH_STARTED", "BattleStarted"],
+    "serverRoutes": ["/api/polls/battles/:battleId", "/api/polls/battles/:battleId/vote"]
   }
 }

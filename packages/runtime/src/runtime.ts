@@ -247,6 +247,14 @@ export class Runtime {
 
     await session.matchEngine.pause();
     session.state.phase = 'paused';
+
+    await this.wrappedEventBus.publish({
+      type: 'BattlePaused',
+      aggregateId: battleId,
+      timestamp: new Date(),
+      payload: { reason: 'Manual pause' },
+      metadata: { correlationId: battleId, version: 1 },
+    } as DomainEvent);
   }
 
   async resumeBattle(battleId: string): Promise<void> {
@@ -256,6 +264,14 @@ export class Runtime {
 
     await session.matchEngine.resume();
     session.state.phase = 'running';
+
+    await this.wrappedEventBus.publish({
+      type: 'BattleResumed',
+      aggregateId: battleId,
+      timestamp: new Date(),
+      payload: {},
+      metadata: { correlationId: battleId, version: 1 },
+    } as DomainEvent);
   }
 
   getBattle(battleId: string): BattleSession | undefined {

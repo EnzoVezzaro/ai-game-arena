@@ -24,6 +24,8 @@ export class BattleWebSocketServer {
     const battleEventTypes = [
       'BattleCreated',
       'BattleStarted',
+      'BattlePaused',
+      'BattleResumed',
       'BattleFinished',
       'BattleAborted',
       'TurnStarted',

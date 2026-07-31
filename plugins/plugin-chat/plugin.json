@@ -11,7 +11,8 @@
   "dependencies": {},
   "contributions": {
     "mcpTools": ["send_chat_message"],
-    "eventHandlers": ["MATCH_STARTED", "MATCH_FINISHED"],
+    "eventHandlers": ["MATCH_STARTED", "MATCH_FINISHED", "BattleStarted", "BattleFinished"],
+    "serverRoutes": ["/api/chat/battles/:battleId"],
     "uiPanels": [
       {
         "id": "chat-panel",

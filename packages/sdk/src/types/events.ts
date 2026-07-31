@@ -6,6 +6,7 @@ export type DomainEvent =
   | BattleFinished
   | BattleAborted
   | BattlePaused
+  | BattleResumed
   | AgentJoinedBattle
   | AgentLeftBattle
   | TurnStarted
@@ -70,6 +71,14 @@ export interface BattlePaused {
   readonly aggregateId: string;
   readonly timestamp: Date;
   readonly payload: { readonly reason: string; readonly errors: ReadonlyArray<{ readonly agentId: string; readonly error: string }> };
+  readonly metadata: EventMetadata;
+}
+
+export interface BattleResumed {
+  readonly type: 'BattleResumed';
+  readonly aggregateId: string;
+  readonly timestamp: Date;
+  readonly payload: Record<string, never>;
   readonly metadata: EventMetadata;
 }
 
