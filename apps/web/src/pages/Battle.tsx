@@ -159,6 +159,32 @@ export function Battle() {
     if (id) subscribe(id);
   }, [id, subscribe]);
 
+  // Live battles: refresh the battle (renderState / turn) so the actual game
+  // view updates as the bridge produces new observations.
+  useEffect(() => {
+    if (!id || isReplay) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const r = await fetch(`/api/battles/${id}`);
+        if (!r.ok) return;
+        const next = (await r.json()) as BattleApi;
+        if (cancelled) return;
+        setBattle(next);
+        const phase = next.state?.phase;
+        if (phase) setStatus(phase === 'resumed' ? 'running' : phase);
+      } catch {
+        /* transient network hiccup — keep last snapshot */
+      }
+    };
+    void tick();
+    const t = setInterval(tick, 1500);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [id, isReplay]);
+
   // Replay playback — only for finished/aborted battles. The ReplayManager owns
   // playback speed here; live battles don't expose SPEED (we cannot predict when
   // an AI will act in live mode). See docs/battles/replay.md.

@@ -24,10 +24,20 @@ describe('BattleTanksBridge (GAME_ENGINE.md)', () => {
     const board = observation.data as {
       gridWidth: number;
       tanks: Record<string, { x: number; y: number; health: number; alive: boolean }>;
+      html?: string;
+      units?: Array<{ agent_id: string; x: number; y: number; hp: number; alive: boolean }>;
     };
     expect(board.gridWidth).toBe(8);
     expect(Object.keys(board.tanks)).toEqual(['a', 'b']);
     expect(board.tanks.a!.health).toBe(100);
+
+    // The game serves its own render output (self-contained HTML) plus
+    // structured units for the roster. The system never renders the game.
+    expect(board.html).toBeTruthy();
+    expect(board.html!).toContain('Battle Tanks');
+    expect(board.html!).toContain('TURN');
+    expect(board.units).toHaveLength(2);
+    expect(board.units![0]).toMatchObject({ agent_id: 'a', hp: 100, alive: true });
   });
 
   it('registers the game tools on a controller', () => {

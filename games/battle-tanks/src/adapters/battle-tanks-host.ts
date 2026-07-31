@@ -7,6 +7,7 @@ import {
   executeAction,
   validateAction,
 } from '../game';
+import { renderGameHtml, toUnits } from '../game-view';
 
 const KEY_DIRECTIONS: Record<string, string> = {
   W: 'up',
@@ -115,7 +116,17 @@ export class BattleTanksHost implements HtmlGameHost {
   capture(): unknown {
     if (!this.state) return null;
     const { gridWidth, gridHeight, tanks, turn, phase } = this.state;
-    return { gridWidth, gridHeight, tanks, turn, phase, winner: this.winner };
+    return {
+      // The game's own render output, served to the engine for display.
+      html: renderGameHtml(this.state, this.winner),
+      gridWidth,
+      gridHeight,
+      tanks,
+      turn,
+      phase,
+      winner: this.winner,
+      units: toUnits(this.state),
+    };
   }
 
   getScores(): Record<string, number> {
