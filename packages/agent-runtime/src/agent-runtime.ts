@@ -129,7 +129,15 @@ export class AgentRuntime {
 
     this.decisionHistory.push({ role: 'assistant', content: response.content });
 
-    throw new Error('No tool calls returned and no text response');
+    // The model answered without calling a tool. Instead of failing the turn,
+    // fall back to a no-op "pass" so the game keeps running; the arena/bridge
+    // validates it and rejects it if pass is not a legal action there.
+    return {
+      agentId: this.agent?.id ?? 'unknown',
+      type: 'pass',
+      parameters: {},
+      timestamp: Date.now(),
+    };
   }
 
   async executeTool(toolName: string, args: Record<string, unknown>): Promise<McpToolResult> {

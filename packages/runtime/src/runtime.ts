@@ -225,6 +225,7 @@ export class Runtime {
           payload: {
             winner: session.matchEngine.getMatchResult().winner,
             reason: session.matchEngine.getMatchResult().reason ?? 'Match completed',
+            scores: session.matchEngine.getState().scores,
           },
           metadata: { correlationId: battleId, version: 1 },
         } as DomainEvent);

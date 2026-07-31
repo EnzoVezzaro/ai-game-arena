@@ -335,6 +335,39 @@ export function Battle() {
   const renderState = battle?.renderState ?? null;
   const units = (battle?.renderState as { units?: Unit[] } | undefined)?.units ?? [];
   const turn = isReplay ? replay.turnAt(replayStepIndex) : battle?.state?.currentTurn ?? 0;
+
+  // Scoreboard comes from the independent plugin-scoreboard (extended db
+  // storage). Poll it so live battles show HP/score changes.
+  const [scoreboard, setScoreboard] = useState<
+    | { status: string; winner?: string; scores: Array<{ agentId: string; score: number; winner?: boolean }> }
+    | null
+  >(null);
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const r = await fetch(`/api/scoreboard/battles/${id}`);
+        if (!r.ok) return;
+        const data = await r.json();
+        if (!cancelled) setScoreboard(data as typeof scoreboard);
+      } catch {
+        /* plugin not installed/active — leave scoreboard empty */
+      }
+    };
+    void tick();
+    const t = setInterval(tick, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [id]);
+
+  const scoreFor = (agentId: string): number | undefined =>
+    scoreboard?.scores.find((s) => s.agentId === agentId)?.score;
+  const winnerFor = (agentId: string): boolean =>
+    scoreboard?.scores.find((s) => s.agentId === agentId)?.winner ?? false;
+  const scoreboardWinner = scoreboard?.winner;
   // Live battles run until win/pause/abort (Infinity — see docs/battles/lifecycle.md).
   // In replay we surface progress against the recorded event count.
   const maxTurns = isReplay && replayTotalEvents > 0 ? replayTotalEvents : undefined;
@@ -466,27 +499,48 @@ export function Battle() {
             />
           </div>
 
-          {/* Scoreboard (graceful — scores not served by backend) */}
+          {/* Scoreboard (scores from the independent plugin-scoreboard) */}
           <div className="glass rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <Icon name="TrendingUp" size={13} className="text-primary" />
               <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 Scoreboard
               </span>
+              {scoreboardWinner && status !== 'running' && (
+                <span className="ml-auto font-mono text-[9px] text-emerald-400">
+                  🏆 winner
+                </span>
+              )}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {agents.map((a, i) => (
-                <div key={a.id} className="rounded-xl border border-border bg-card/40 p-2.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-[9px] text-muted-foreground">#{i + 1}</span>
-                    <span className="text-[11px] font-medium truncate">{a.name || a.id}</span>
+              {agents.map((a, i) => {
+                const score = scoreFor(a.id);
+                const winner = winnerFor(a.id);
+                const hp =
+                  units.find((u) => (u.agent_id || u.agentId) === a.id)?.hp ?? null;
+                return (
+                  <div
+                    key={a.id}
+                    className={`rounded-xl border bg-card/40 p-2.5 ${
+                      winner ? 'border-emerald-500/60' : 'border-border'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-[9px] text-muted-foreground">#{i + 1}</span>
+                      <span className="text-[11px] font-medium truncate">
+                        {a.name || a.id}
+                        {winner ? ' 🏆' : ''}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 font-display text-xl font-bold text-primary">
+                      {score != null ? score : '—'}
+                    </div>
+                    <div className="font-mono text-[9px] text-muted-foreground">
+                      {hp != null ? `HP ${hp}` : score != null ? 'pts' : 'score pending'}
+                    </div>
                   </div>
-                  <div className="mt-1.5 font-display text-xl font-bold text-muted-foreground">
-                    —
-                  </div>
-                  <div className="font-mono text-[9px] text-muted-foreground">score pending</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

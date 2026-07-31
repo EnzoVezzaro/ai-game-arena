@@ -54,7 +54,11 @@ export interface BattleFinished {
   readonly type: 'BattleFinished';
   readonly aggregateId: string;
   readonly timestamp: Date;
-  readonly payload: { readonly winner?: string; readonly reason: string };
+  readonly payload: {
+    readonly winner?: string;
+    readonly reason: string;
+    readonly scores?: Record<string, number>;
+  };
   readonly metadata: EventMetadata;
 }
 

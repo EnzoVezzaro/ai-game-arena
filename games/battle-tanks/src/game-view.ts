@@ -30,7 +30,7 @@ export function toUnits(state: BattleTanksState): TankUnit[] {
     agent_id: agentId,
     x: tank.x,
     y: tank.y,
-    hp: tank.health,
+    hp: tank.alive ? tank.health : 0,
     alive: tank.alive,
     color: TANK_COLORS[index % TANK_COLORS.length] ?? '#34d399',
     symbol: TANK_SYMBOLS[index % TANK_SYMBOLS.length] ?? '▲',

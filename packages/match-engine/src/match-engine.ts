@@ -117,6 +117,7 @@ export class MatchEngine {
   private lastBridgeObservation: BridgeObservation | null = null;
   private agentErrors: Map<string, { category: ErrorCategory; message: string; turn: number }> = new Map();
   private agentRetries: Map<string, number> = new Map();
+  private lastPublishedScores: Map<string, number> = new Map();
   private onAgentBlocked?: (agentId: string, error: string) => void;
   private onAgentUnblocked?: (agentId: string) => void;
 
@@ -540,6 +541,10 @@ export class MatchEngine {
           }
         }
 
+        // Publish ScoreUpdated for every agent whose score changed, so
+        // plugins (scoreboard, rewards) can track scores independently.
+        await this.publishScoreUpdates();
+
         if (validation.valid) {
           // 9. Publish ActionExecuted
           this.agentRetries.delete(agent.id);
@@ -600,6 +605,22 @@ export class MatchEngine {
 
   private describeErrors(errors: Array<{ agentId: string; error: string }>): string {
     return errors.map((e) => `${e.agentId.slice(0, 8)}: ${e.error.split('"')[0]?.slice(0, 60) ?? e.error}`).join('; ');
+  }
+
+  private async publishScoreUpdates(): Promise<void> {
+    for (const agent of this.agents) {
+      const score = this.state.scores[agent.id] ?? 0;
+      const last = this.lastPublishedScores.get(agent.id) ?? 0;
+      if (score === last) continue;
+      this.lastPublishedScores.set(agent.id, score);
+      await this.publishEvent({
+        type: 'ScoreUpdated',
+        aggregateId: this.battleId,
+        timestamp: new Date(),
+        payload: { agentId: agent.id, score, delta: score - last },
+        metadata: { correlationId: this.battleId, version: 1 },
+      });
+    }
   }
 
   private async publishEvent(event: ForwardableEvent): Promise<void> {
