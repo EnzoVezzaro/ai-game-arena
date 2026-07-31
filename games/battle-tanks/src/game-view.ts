@@ -89,8 +89,8 @@ export function renderGameHtml(state: BattleTanksState, winner: string | null): 
   .wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 20px; }
   .hud { display: flex; gap: 18px; align-items: center; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #9ca3af; }
   .hud b { color: #34d399; }
-  .board { display: grid; gap: 3px; padding: 10px; background: #11161d; border: 1px solid #1f2937; border-radius: 14px; box-shadow: 0 0 0 1px #0004, 0 18px 40px #0008; }
-  .cell { width: 52px; height: 52px; background: #151b23; border-radius: 8px; display: flex; align-items: center; justify-content: center; position: relative; }
+  .board { display: grid; gap: 3px; padding: 10px; background: #11161d; border: 1px solid #1f2937; border-radius: 14px; box-shadow: 0 0 0 1px #0004, 0 18px 40px #0008; width: min(100%, 460px); }
+  .cell { aspect-ratio: 1 / 1; background: #151b23; border-radius: 8px; display: flex; align-items: center; justify-content: center; position: relative; }
   .tank { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 86%; height: 86%; border-radius: 9px; position: relative; animation: pop .35s ease; }
   .tank .sym { font-size: 17px; line-height: 1; }
   .tank .name { font-size: 7px; margin-top: 2px; max-width: 46px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -109,7 +109,7 @@ export function renderGameHtml(state: BattleTanksState, winner: string | null): 
 <body>
   <div class="wrap">
     <div class="hud"><span>Battle Tanks</span><span>TURN <b>${state.turn}</b></span><span>PHASE <b>${state.phase}</b></span></div>
-    <div class="board" style="grid-template-columns:repeat(${state.gridWidth}, 52px);grid-template-rows:repeat(${state.gridHeight}, 52px)">${cellsHtml}</div>
+    <div class="board" style="grid-template-columns:repeat(${state.gridWidth}, 1fr);grid-template-rows:repeat(${state.gridHeight}, 1fr)">${cellsHtml}</div>
     <div class="roster">${tankCells}</div>
     <div class="hint">Standalone game — use WASD / arrow keys to drive your tank locally. When hosted by AI Game Arena, the bridge drives it from the engine.</div>
   </div>

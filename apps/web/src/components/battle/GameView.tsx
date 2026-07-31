@@ -61,13 +61,12 @@ export function GameView({ renderState, accent, turn, replay, arenaSlug }: GameV
   if (html) {
     return (
       <div className="relative w-full">
-        <div className="relative w-full max-w-[760px] mx-auto rounded-2xl border border-border bg-background overflow-hidden">
+        <div className="relative w-full max-w-[700px] mx-auto rounded-2xl border border-border bg-background overflow-hidden">
           <iframe
             title={arenaSlug ? `${arenaSlug} game` : 'Game'}
             srcDoc={html}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock"
-            className="absolute inset-0 h-full w-full"
-            style={{ minHeight: 480 }}
+            sandbox="allow-scripts allow-forms allow-pointer-lock"
+            className="block h-[620px] w-full"
           />
           <Hud accent={accent} turn={turn} replay={replay} arenaSlug={arenaSlug} />
         </div>

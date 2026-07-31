@@ -161,13 +161,20 @@ export function Battle() {
 
   // Live battles: refresh the battle (renderState / turn) so the actual game
   // view updates as the bridge produces new observations.
+  const hasBattleRef = useRef(false);
+  hasBattleRef.current = !!battle;
   useEffect(() => {
     if (!id || isReplay) return;
     let cancelled = false;
     const tick = async () => {
       try {
         const r = await fetch(`/api/battles/${id}`);
-        if (!r.ok) return;
+        if (!r.ok) {
+          // Battle gone (e.g. server restarted — battles are in-memory):
+          // stop polling so we don't spam 404s, keep last snapshot.
+          if (!hasBattleRef.current) clearInterval(t);
+          return;
+        }
         const next = (await r.json()) as BattleApi;
         if (cancelled) return;
         setBattle(next);
