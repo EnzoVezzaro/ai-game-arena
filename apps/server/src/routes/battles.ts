@@ -3,6 +3,7 @@ import { Container } from '@ai-game-arena/core';
 import { Runtime } from '@ai-game-arena/runtime';
 import { SqliteStorage } from '@ai-game-arena/storage';
 import type { AgentConfig, BattleConfig } from '@ai-game-arena/sdk';
+import { createGameBridge } from '../lib/game-bridge-factory';
 
 export function createBattleRoutes(container: Container) {
   const app = new Hono();
@@ -124,16 +125,58 @@ export function createBattleRoutes(container: Container) {
       'SELECT type, timestamp, payload, metadata FROM events WHERE aggregate_id = ? ORDER BY timestamp',
       [id],
     );
+    const mapped = events.map((e) => ({
+      type: e.type,
+      timestamp: e.timestamp,
+      payload: JSON.parse(e.payload),
+      metadata: JSON.parse(e.metadata),
+    }));
+
+    // Reconstruct the board timeline from the recorded actions by replaying
+    // them through the game's bridge (deterministic). renderStates[i] is the
+    // render state after the first i events; index 0 is the initial board.
+    // This makes replay show the game actually being played, not the final
+    // snapshot.
+    const bridge = createGameBridge(battle.arenaId);
+    let renderStates: Array<Record<string, unknown> | null> | null = null;
+    if (bridge) {
+      try {
+        await bridge.initialize({
+          id: battle.arenaId,
+          seed: battle.config.seed,
+          agentIds: battle.agents.map((a) => a.id),
+        });
+        renderStates = [bridge.getRenderState?.() ?? null];
+        for (const event of mapped) {
+          if (event.type === 'ActionExecuted') {
+            const action = (event.payload.action ?? event.payload) as {
+              agentId?: string;
+              type?: string;
+              parameters?: Record<string, unknown>;
+            };
+            if (action.agentId && action.type) {
+              try {
+                await bridge.applyActions(action.agentId, [
+                  { type: action.type, payload: action.parameters ?? {} },
+                ]);
+              } catch {
+                // A rejected action did not change the board.
+              }
+            }
+          }
+          renderStates.push(bridge.getRenderState?.() ?? null);
+        }
+      } catch {
+        renderStates = null;
+      }
+    }
+
     return c.json({
       id: battle.id,
       arenaId: battle.arenaId,
       agents: battle.agents,
-      events: events.map((e) => ({
-        type: e.type,
-        timestamp: e.timestamp,
-        payload: JSON.parse(e.payload),
-        metadata: JSON.parse(e.metadata),
-      })),
+      events: mapped,
+      renderStates,
     });
   });
 

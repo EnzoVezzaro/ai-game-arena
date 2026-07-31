@@ -332,8 +332,12 @@ export function Battle() {
     [battle],
   );
 
-  const renderState = battle?.renderState ?? null;
-  const units = (battle?.renderState as { units?: Unit[] } | undefined)?.units ?? [];
+  // In replay, the board comes from the server-reconstructed timeline so it
+  // replays the actual game; live battles use the live battle snapshot.
+  const renderState = isReplay
+    ? replay.renderStateAt(replayStepIndex)
+    : (battle?.renderState ?? null);
+  const units = (renderState as { units?: Unit[] } | undefined)?.units ?? [];
   const turn = isReplay ? replay.turnAt(replayStepIndex) : battle?.state?.currentTurn ?? 0;
 
   // Scoreboard comes from the core @ai-game-arena/scoreboard package

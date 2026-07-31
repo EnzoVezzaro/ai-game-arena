@@ -23,6 +23,12 @@ export interface ReplayData {
   arenaId: string;
   agents: Array<{ id: string; name?: string }>;
   events: ReplayEvent[];
+  /**
+   * Optional per-event render states (server-reconstructed board timeline).
+   * renderStates[i] is the state after the first i events; index 0 is the
+   * initial board. Absent for arenas without a bridge.
+   */
+  renderStates?: Array<Record<string, unknown> | null>;
 }
 
 export interface ReplayStep {
@@ -47,6 +53,13 @@ export class ReplayManager {
 
   constructor(opts: InitOptions = {}) {
     if (opts.initialSpeed) this.speed = opts.initialSpeed;
+  }
+
+  /** Render state at a given step index (board timeline), if available. */
+  renderStateAt(index: number): Record<string, unknown> | null {
+    if (!this.data?.renderStates) return null;
+    const clamped = Math.max(0, Math.min(index, this.data.renderStates.length - 1));
+    return this.data.renderStates[clamped] ?? null;
   }
 
   async load(battleId: string): Promise<ReplayData> {
