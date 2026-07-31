@@ -13,6 +13,7 @@ export interface BridgeConfig {
   readonly id: string;
   readonly seed?: number;
   readonly agentIds?: string[];
+  readonly agentNames?: Record<string, string>;
   [key: string]: unknown;
 }
 

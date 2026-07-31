@@ -23,7 +23,6 @@ export interface Agent {
   avg_latency_ms?: number;
   avg_tokens?: number;
   config?: Record<string, unknown>;
-  healthStatus?: { ok: boolean; error?: string };
   blocked?: { error: string; turn: number } | null;
 }
 
@@ -38,7 +37,7 @@ export function AgentCard({ agent, rank, className }: AgentCardProps) {
   const typed = (agent.config as { strategy?: string } | undefined)?.strategy;
   const stratLabel = agent.strategy || typed || 'balanced';
   const stratResolved = strategyMeta(stratLabel);
-  const hasHealthIssue = agent.healthStatus && !agent.healthStatus.ok;
+  const hasHealthIssue = agent.blocked != null && agent.blocked.error != null;
   return (
     <Link
       to={`/agents/${agent.slug || agent.id}`}
@@ -78,7 +77,7 @@ export function AgentCard({ agent, rank, className }: AgentCardProps) {
           </div>
           {hasHealthIssue && (
             <div className="font-mono text-[9px] text-destructive mt-0.5 truncate">
-              {agent.healthStatus?.error}
+              {agent.blocked?.error}
             </div>
           )}
           {agent.blocked?.error && (

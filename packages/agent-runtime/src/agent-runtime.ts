@@ -15,6 +15,14 @@ import { createProvider } from './providers/provider-factory';
 export interface AgentRuntimeOptions {
   logger: Logger;
   provider?: LLMProvider;
+  /**
+   * Tool names that are free "looks" (e.g. scan): they return game state to
+   * the agent and do NOT consume the turn. The agent may call them before
+   * taking its real action. Defaults to ['scan'].
+   */
+  lookTools?: string[];
+  /** Max LLM rounds allowed for look-ahead before the agent must act. Default 4. */
+  maxLookTurns?: number;
 }
 
 export class AgentRuntime {
@@ -30,17 +38,23 @@ export class AgentRuntime {
   };
   private lastObservation: ObservationType | null = null;
   private decisionHistory: Array<{ role: 'user' | 'assistant' | 'tool'; content: string }> = [];
+  private readonly lookTools: Set<string>;
+  private readonly maxLookTurns: number;
+  private readonly injectedProvider: LLMProvider | null;
 
   constructor(options: AgentRuntimeOptions) {
     this.logger = options.logger;
+    this.lookTools = new Set(options.lookTools ?? ['scan']);
+    this.maxLookTurns = options.maxLookTurns ?? 4;
+    this.injectedProvider = options.provider ?? null;
   }
 
   async initialize(agent: AgentConfig): Promise<void> {
     this.agent = agent;
 
-    if (agent.provider) {
-      this.llmProvider = createProvider(agent.provider);
-    }
+    // Prefer an explicitly injected provider (tests/host wiring); otherwise
+    // build one from the agent's provider config.
+    this.llmProvider = this.injectedProvider ?? (agent.provider ? createProvider(agent.provider) : null);
 
     this.logger.info(`Initialized agent: ${agent.name} (${agent.id}) with provider: ${this.llmProvider?.type ?? 'none'}`, {
       component: 'agent-runtime',
@@ -79,65 +93,71 @@ export class AgentRuntime {
     if (!this.mcpClient) {
       throw new Error('Agent not connected to controller');
     }
-
-    const tools = await this.mcpClient.listTools();
-    const observationText = this.lastObservation
-      ? JSON.stringify(this.lastObservation.data)
-      : 'No observation available';
-
     if (!this.llmProvider) {
       throw new Error(
         `Agent ${this.agent?.name ?? 'unknown'} has no LLM provider configured`,
       );
     }
 
-    const response = await this.llmProvider.decide(
-      this.agent!,
-      observationText,
-      tools,
-      this.decisionHistory,
-    );
+    const tools = await this.mcpClient.listTools();
+    const observationText = this.lastObservation
+      ? JSON.stringify(this.lastObservation.data)
+      : 'No observation available';
 
-    if (response.toolCalls && response.toolCalls.length > 0) {
-      const toolCall = response.toolCalls[0];
-      if (!toolCall) {
-        throw new Error('Provider returned empty tool call');
+    // The agent may call "look" tools (e.g. scan) to see the board BEFORE
+    // playing; those do not consume the turn. We loop, feeding each look
+    // result back, until the agent takes its actual turn action (or we hit
+    // the cap and fall back to pass).
+    const passAction = (): AgentAction => ({
+      agentId: this.agent?.id ?? 'unknown',
+      type: 'pass',
+      parameters: {},
+      timestamp: Date.now(),
+    });
+
+    for (let round = 0; round < this.maxLookTurns; round++) {
+      const response = await this.llmProvider.decide(
+        this.agent!,
+        observationText,
+        tools,
+        this.decisionHistory,
+      );
+
+      const toolCalls = response.toolCalls ?? [];
+      if (toolCalls.length === 0) {
+        this.decisionHistory.push({ role: 'assistant', content: response.content });
+        return passAction();
       }
 
-      try {
-        const result = await this.mcpClient.callTool(toolCall.name, toolCall.parameters);
+      for (const toolCall of toolCalls) {
+        if (!toolCall) continue;
 
+        const result = await this.mcpClient.callTool(toolCall.name, toolCall.parameters);
         this.decisionHistory.push({
           role: 'assistant',
           content: `Called ${toolCall.name}(${JSON.stringify(toolCall.parameters)}) → ${JSON.stringify(result.content)}`,
         });
 
+        // Free look (scan): the result is in history so the model can now
+        // decide its real action. Not a turn action.
+        if (this.lookTools.has(toolCall.name)) continue;
+
+        // Final turn action.
         return {
           agentId: this.agent?.id ?? 'unknown',
           type: toolCall.name,
           parameters: toolCall.parameters,
           timestamp: Date.now(),
         };
-      } catch (err) {
-        this.logger.error(`Tool execution failed: ${toolCall.name}`, {
-          component: 'agent-runtime',
-          agentId: this.agent?.id,
-        });
-        throw err;
       }
     }
 
-    this.decisionHistory.push({ role: 'assistant', content: response.content });
-
-    // The model answered without calling a tool. Instead of failing the turn,
-    // fall back to a no-op "pass" so the game keeps running; the arena/bridge
-    // validates it and rejects it if pass is not a legal action there.
-    return {
-      agentId: this.agent?.id ?? 'unknown',
-      type: 'pass',
-      parameters: {},
-      timestamp: Date.now(),
-    };
+    // Only look calls were made within the cap — do not waste the game turn.
+    this.logger.warn(`Agent only looked (${[...this.lookTools].join(', ')}) without acting — passing`, {
+      component: 'agent-runtime',
+      agentId: this.agent?.id,
+    });
+    return passAction();
   }
 
   async executeTool(toolName: string, args: Record<string, unknown>): Promise<McpToolResult> {

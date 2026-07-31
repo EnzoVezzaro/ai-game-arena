@@ -179,6 +179,7 @@ export class MatchEngine {
         id: this.arena.config.id,
         seed: this.config.seed,
         agentIds: this.agents.map((agent) => agent.id),
+        agentNames: Object.fromEntries(this.agents.map((a) => [a.id, a.name])),
       });
     }
 
@@ -190,7 +191,7 @@ export class MatchEngine {
       });
 
       // Register the bridge's action vocabulary with the agent's controller
-      bridge?.registerTools(controller);
+      bridge?.registerTools(controller, agent.id);
 
       const runtime = new AgentRuntime({
         logger: this.logger.child({ component: 'agent-runtime', agentId: agent.id }),

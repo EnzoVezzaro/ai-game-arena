@@ -55,6 +55,12 @@ export function createProvider(config: ProviderConfig | undefined): LLMProvider 
         type: 'openai',
         baseUrl: baseUrl || 'http://localhost:1234/v1',
       } as ProviderConfig);
+    case 'nvidia':
+      return new OpenAIProvider({
+        ...config,
+        type: 'openai',
+        baseUrl: baseUrl || 'https://integrate.api.nvidia.com/v1',
+      } as ProviderConfig);
     case 'custom':
       return new OpenAIProvider({
         ...config,

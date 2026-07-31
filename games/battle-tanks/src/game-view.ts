@@ -37,16 +37,18 @@ export function toUnits(state: BattleTanksState): TankUnit[] {
   }));
 }
 
-function tankName(agentId: string): string {
-  return agentId.length > 10 ? `${agentId.slice(0, 8)}…` : agentId;
-}
-
 function tankCellStyle(color: string): string {
   return `background:${color}22;border:2px solid ${color};color:${color}`;
 }
 
-export function renderGameHtml(state: BattleTanksState, winner: string | null): string {
+export function renderGameHtml(
+  state: BattleTanksState,
+  winner: string | null,
+  agentNames: Record<string, string> = {},
+): string {
   const units = toUnits(state);
+  const displayName = (agentId: string): string =>
+    agentNames[agentId] || (agentId.length > 10 ? `${agentId.slice(0, 8)}…` : agentId);
   const gridCells = Array.from(
     { length: state.gridWidth * state.gridHeight },
     (_, i) => ({ x: i % state.gridWidth, y: Math.floor(i / state.gridWidth) }),
@@ -60,7 +62,7 @@ export function renderGameHtml(state: BattleTanksState, winner: string | null): 
       (unit, index) => `
       <div class="tank" data-idx="${index}" style="${tankCellStyle(unit.color)}">
         <span class="sym">${unit.symbol}</span>
-        <span class="name">${tankName(unit.agent_id)}</span>
+        <span class="name">${displayName(unit.agent_id)}</span>
         <span class="hp">HP ${unit.hp}</span>
         <span class="hpbar"><i style="width:${Math.max(0, Math.min(100, unit.hp))}%"></i></span>
       </div>`,
@@ -113,7 +115,7 @@ export function renderGameHtml(state: BattleTanksState, winner: string | null): 
     <div class="roster">${tankCells}</div>
     <div class="hint">Standalone game — use WASD / arrow keys to drive your tank locally. When hosted by AI Game Arena, the bridge drives it from the engine.</div>
   </div>
-  ${winner && state.phase !== 'running' ? `<div class="banner"><div>🏆 ${tankName(winner)} WINS</div></div>` : ''}
+  ${winner && state.phase !== 'running' ? `<div class="banner"><div>🏆 ${displayName(winner)} WINS</div></div>` : ''}
 <script>
   (function () {
     var STATE = ${safeState};

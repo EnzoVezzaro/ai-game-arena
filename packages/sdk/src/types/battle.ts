@@ -52,6 +52,7 @@ export interface ProviderConfig {
     | 'mistral'
     | 'groq'
     | 'openrouter'
+    | 'nvidia'
     | 'custom';
   readonly baseUrl: string;
   readonly apiKey?: string;

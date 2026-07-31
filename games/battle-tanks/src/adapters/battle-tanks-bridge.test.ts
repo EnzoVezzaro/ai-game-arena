@@ -37,7 +37,7 @@ describe('BattleTanksBridge (GAME_ENGINE.md)', () => {
     expect(view.you).toMatchObject({ id: 'a', x: 0, y: 0, health: 100, alive: true });
     expect(view.tanks).toHaveLength(1);
     expect(view.tanks[0]).toMatchObject({ id: 'b', x: 7, y: 7, health: 100 });
-    expect(view.availableActions).toEqual(['move', 'attack', 'scan', 'pass']);
+    expect(view.availableActions).toEqual(['move', 'attack', 'pass']);
     expect(view.text).toContain('YOUR TANK: you are at (0,0) with 100 HP');
     expect(view.text).toContain('Tank at (7,7)');
     expect(view.text).toContain('ACTIONS AVAILABLE');
@@ -81,7 +81,7 @@ describe('BattleTanksBridge (GAME_ENGINE.md)', () => {
     expect(events.some((e) => e.type === 'tank_moved')).toBe(true);
   });
 
-  it('scan requires a valid direction and moves the tank (not a wasted turn)', async () => {
+  it('scan is a free look: returns the board and does not move the tank', async () => {
     const bridge = new BattleTanksBridge();
     const events: BridgeEvent[] = [];
     bridge.onEvent((event) => events.push(event));
@@ -91,16 +91,20 @@ describe('BattleTanksBridge (GAME_ENGINE.md)', () => {
     const beforeView = before.data as { you: { x: number; y: number } };
     expect(beforeView.you).toMatchObject({ x: 0, y: 0 });
 
-    // scan without a direction is invalid → nothing moves.
-    await bridge.applyActions('a', [{ type: 'scan', payload: {} }]);
-    const afterInvalid = await bridge.observe('a');
-    expect((afterInvalid.data as { you: { x: number } }).you.x).toBe(0);
+    // scan returns the board state to the caller and does NOT move the tank.
+    const controller = new Controller();
+    bridge.registerTools(controller, 'a');
+    const mcp = controller.getMcpServer() as {
+      callTool(name: string, args: Record<string, unknown>): Promise<{ content: Array<{ type: string; text: string }> }>;
+    };
+    const scanResult = await mcp.callTool('scan', { x: 7, y: 7 });
+    const scanText = scanResult.content[0]?.text ?? '';
+    expect(scanText).toContain('YOUR TANK: you are at (0,0)');
+    expect(scanText).toContain('BOARD:');
 
-    // scan(direction) moves the tank one step.
-    await bridge.applyActions('a', [{ type: 'scan', payload: { direction: 'right' } }]);
     const after = await bridge.observe('a');
-    expect((after.data as { you: { x: number } }).you.x).toBe(1);
-    expect(events.some((e) => e.type === 'scan_performed')).toBe(true);
+    expect((after.data as { you: { x: number } }).you.x).toBe(0);
+    expect(events.some((e) => e.type === 'scan_performed')).toBe(false);
   });
 
   it('translates keyboard.press into game movement', async () => {

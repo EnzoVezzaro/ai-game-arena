@@ -10,7 +10,12 @@ import type { Controller, GameBridge as GameBridgeContract } from '@ai-game-aren
  * produce abstract actions that `applyActions` consumes.
  */
 export interface GameBridge extends GameBridgeContract {
-  registerTools(controller: Controller): void;
+  /**
+   * Register the bridge's action vocabulary (MCP tools) on an agent's
+   * controller. `playerId` identifies which player that controller belongs
+   * to, so look-ahead tools (scan) can return that player's observation.
+   */
+  registerTools(controller: Controller, playerId?: string): void;
   /** Optional engine convenience: current scores keyed by player id. */
   getScores?(): Record<string, number>;
   /** Optional engine convenience: winning player id when the game is over. */

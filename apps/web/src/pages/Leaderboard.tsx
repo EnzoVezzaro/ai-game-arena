@@ -12,6 +12,15 @@ interface AgentApi {
   config?: Record<string, unknown>;
 }
 
+interface LeaderboardRow {
+  agentId: string;
+  battles: number;
+  wins: number;
+  totalScore: number;
+  bestScore: number;
+  updatedAt: number;
+}
+
 const mapAgent = (a: AgentApi): Agent => {
   const cfg = (a.config || {}) as { strategy?: string; model?: string };
   return {
@@ -31,10 +40,36 @@ export function Leaderboard() {
 
   useEffect(() => {
     let on = true;
-    fetch('/api/agents')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((list: AgentApi[]) => on && setAgents((list || []).map(mapAgent)))
-      .catch(() => on && setAgents([]))
+    Promise.all([
+      fetch('/api/agents')
+        .then((r) => (r.ok ? r.json() : []))
+        .catch(() => []),
+      fetch('/api/scoreboard/leaderboard')
+        .then((r) => (r.ok ? r.json() : []))
+        .catch(() => []),
+    ])
+      .then(([agentList, rows]: [AgentApi[], LeaderboardRow[]]) => {
+        if (!on) return;
+        const byId = new Map<string, LeaderboardRow>();
+        for (const row of rows || []) byId.set(row.agentId, row);
+        setAgents((agentList || []).map((a) => {
+          const base = mapAgent(a);
+          const row = byId.get(a.id);
+          if (!row) return base;
+          const battles = row.battles || 0;
+          const wins = row.wins || 0;
+          // No loss/draw distinction is recorded by the scoreboard, so
+          // derive losses/draws as zero — rating is derived from wins/score.
+          const rating = 1200 + wins * 25 + Math.round(row.totalScore / 5);
+          return {
+            ...base,
+            rating,
+            wins,
+            losses: 0,
+            draws: Math.max(0, battles - wins),
+          };
+        }));
+      })
       .finally(() => on && setLoading(false));
     return () => {
       on = false;

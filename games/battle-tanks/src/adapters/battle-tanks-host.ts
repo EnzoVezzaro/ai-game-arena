@@ -37,6 +37,7 @@ export class BattleTanksHost implements HtmlGameHost {
   private state: BattleTanksState | null = null;
   private seed: number | undefined;
   private agentIds: string[] = [];
+  private agentNames: Record<string, string> = {};
   private activePlayer: string | null = null;
   private paused = false;
   private winner: string | null = null;
@@ -46,9 +47,10 @@ export class BattleTanksHost implements HtmlGameHost {
     this.eventSink = handler;
   }
 
-  initialize(seed?: number, agentIds?: string[]): void {
+  initialize(seed?: number, agentIds?: string[], agentNames?: Record<string, string>): void {
     this.seed = seed;
     this.agentIds = agentIds ?? [];
+    this.agentNames = agentNames ?? {};
     this.state = createInitialState(seed, this.agentIds);
     this.winner = null;
     this.paused = false;
@@ -118,13 +120,14 @@ export class BattleTanksHost implements HtmlGameHost {
     const { gridWidth, gridHeight, tanks, turn, phase } = this.state;
     return {
       // The game's own render output, served to the engine for display.
-      html: renderGameHtml(this.state, this.winner),
+      html: renderGameHtml(this.state, this.winner, this.agentNames),
       gridWidth,
       gridHeight,
       tanks,
       turn,
       phase,
       winner: this.winner,
+      agentNames: this.agentNames,
       units: toUnits(this.state),
     };
   }
@@ -171,12 +174,12 @@ export class BattleTanksHost implements HtmlGameHost {
       '',
       `TURN: ${turn} — PHASE: ${phase}`,
       '',
-      'ACTIONS AVAILABLE: move(direction: up|down|left|right), attack(targetX, targetY), scan(direction: up|down|left|right), pass().',
+      'ACTIONS AVAILABLE (your turn action — take exactly one): move(direction: up|down|left|right), attack(targetX, targetY), pass().',
+      'SCAN: scan(x, y) is a FREE look — it returns the current board state to you and does NOT use your turn. You may call it BEFORE your turn action to see the board, then still take your action.',
       'RULES:',
-      '- Take exactly one action per turn.',
+      '- Take exactly one turn action per turn (move, attack, or pass).',
       '- You cannot move outside the grid; moving into a wall does nothing.',
       '- attack(targetX, targetY) damages any enemy tank occupying that cell for 35 HP.',
-      '- scan(direction) moves you one step in that direction and scans the area; it is a move action.',
       '- You win by being the last tank alive. If the game is over, just pass().',
     ].join('\n');
 
@@ -187,7 +190,7 @@ export class BattleTanksHost implements HtmlGameHost {
       phase,
       you: you ? { id: playerId, x: you.x, y: you.y, health: you.health, alive: you.alive } : null,
       tanks: others,
-      availableActions: ['move', 'attack', 'scan', 'pass'],
+      availableActions: ['move', 'attack', 'pass'],
       winner: this.winner,
     };
   }

@@ -25,6 +25,7 @@ export class BattleTanksBridge implements GameBridge {
 
   private readonly html: HTMLBridge;
   private readonly host: BattleTanksHost;
+  private readonly playerByController = new WeakMap<Controller, string>();
 
   constructor() {
     this.host = new BattleTanksHost();
@@ -42,7 +43,9 @@ export class BattleTanksBridge implements GameBridge {
     this.html.onEvent(handler);
   }
 
-  registerTools(controller: Controller): void {
+  registerTools(controller: Controller, playerId?: string): void {
+    this.playerByController.set(controller, playerId ?? 'unknown');
+
     controller.registerTool(
       'move',
       'Move your tank in a direction',
@@ -80,20 +83,22 @@ export class BattleTanksBridge implements GameBridge {
 
     controller.registerTool(
       'scan',
-      'Move your tank one step in a direction and scan the area',
+      'Free look: returns the current board state (your position, enemies, available actions). It does NOT use your turn — after scanning you still take your normal action.',
       {
         type: 'object',
         properties: {
-          direction: {
-            type: 'string',
-            enum: ['up', 'down', 'left', 'right'],
-            description: 'Direction to move and scan',
-          },
+          x: { type: 'number', description: 'Optional X coordinate to scan' },
+          y: { type: 'number', description: 'Optional Y coordinate to scan' },
         },
-        required: ['direction'],
       },
-      async (args: Record<string, unknown>) => {
-        return { content: [{ type: 'text', text: `Scanned ${String(args.direction)}` }] };
+      async (_args: Record<string, unknown>) => {
+        const playerId = this.playerByController.get(controller) ?? 'unknown';
+        const observation = this.host.captureObservation(playerId);
+        const text =
+          typeof observation === 'object' && observation !== null
+            ? String((observation as { text?: string }).text ?? '')
+            : String(observation);
+        return { content: [{ type: 'text', text }] };
       },
     );
 
