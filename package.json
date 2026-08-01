@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "bun run --filter '*' build",
-    "dev": "bun run --filter '@ai-game-arena/*' dev",
+    "dev": "bun run --parallel --filter '@ai-game-arena/*' dev",
     "lint": "bunx prettier --check .",
     "format": "bunx prettier --write .",
     "typecheck": "bun run --filter '*' typecheck",
