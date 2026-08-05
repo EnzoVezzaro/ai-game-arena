@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { Container } from '@ai-game-arena/core';
+import { Container } from '@ai-game-arena/kernel';
 import { SqliteStorage } from '@ai-game-arena/storage';
 
 export function createProfilesRoutes(container: Container) {

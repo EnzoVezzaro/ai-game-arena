@@ -1,0 +1,1 @@
+{"version":3,"file":"event-recorder.d.ts","sourceRoot":"","sources":["event-recorder.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,SAAS,EAAE,MAAM,aAAa,CAAC;AAExC,qBAAa,aAAa;aACI,SAAS,EAAE,SAAS;gBAApB,SAAS,GAAE,SAA2B;IAElE,IAAI,CAAC,KAAK,EAAE;QAAE,KAAK,EAAE,MAAM,CAAC;QAAC,IAAI,EAAE,MAAM,CAAC;QAAC,KAAK,EAAE,OAAO,CAAA;KAAE,GAAG,IAAI;CAGnE"}

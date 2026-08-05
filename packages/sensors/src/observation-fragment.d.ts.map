@@ -1,0 +1,1 @@
+{"version":3,"file":"observation-fragment.d.ts","sourceRoot":"","sources":["observation-fragment.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,mBAAmB;IAClC,QAAQ,CAAC,IAAI,EAAE,MAAM,CAAC;IACtB,QAAQ,CAAC,IAAI,EAAE,OAAO,CAAC;IACvB,QAAQ,CAAC,SAAS,EAAE,MAAM,CAAC;IAC3B,QAAQ,CAAC,OAAO,EAAE,MAAM,CAAC;CAC1B"}

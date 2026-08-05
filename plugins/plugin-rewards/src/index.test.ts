@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { InProcessEventBus } from '@ai-game-arena/core';
+import { InProcessEventBus } from '@ai-game-arena/kernel';
 import { SqliteStorage } from '@ai-game-arena/storage';
 import { Scoreboard } from '@ai-game-arena/scoreboard';
 import { activate as activateRewards } from './index';

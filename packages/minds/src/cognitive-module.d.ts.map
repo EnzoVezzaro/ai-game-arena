@@ -1,0 +1,1 @@
+{"version":3,"file":"cognitive-module.d.ts","sourceRoot":"","sources":["cognitive-module.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,oBAAoB,CAAC;AAEzD,MAAM,WAAW,eAAe;IAC9B,QAAQ,CAAC,IAAI,EAAE,MAAM,CAAC;IACtB,OAAO,CAAC,KAAK,EAAE,cAAc,GAAG,OAAO,CAAC,cAAc,CAAC,CAAC;CACzD"}

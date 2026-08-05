@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@ai-game-arena/sdk": "workspace:*",
-    "@ai-game-arena/core": "workspace:*"
+    "@ai-game-arena/kernel": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

@@ -1,17 +1,16 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { existsSync, readFileSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, mkdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { createContainer } from '@ai-game-arena/core';
-import { Tokens } from '@ai-game-arena/core';
+import { createContainer } from '@ai-game-arena/kernel';
+import { Tokens } from '@ai-game-arena/kernel';
 import type { Logger, EventBus } from '@ai-game-arena/sdk';
 import { PluginManager } from '@ai-game-arena/plugin-manager';
-import { Runtime } from '@ai-game-arena/runtime';
+import { Runtime } from '@ai-game-arena/battle-runtime';
 import { createGameBridge } from './lib/game-bridge-factory';
 import { SqliteStorage } from '@ai-game-arena/storage';
-import type { GameBridge } from '@ai-game-arena/controller';
 import { Scoreboard } from '@ai-game-arena/scoreboard';
 import { createApiRoutes } from './routes/api';
 import { createBattleRoutes } from './routes/battles';
@@ -32,6 +31,7 @@ import { ArenasManager } from '@ai-game-arena/arenas-manager';
 
 const projectRoot = new URL('../../..', import.meta.url).pathname;
 const webDistPath = join(projectRoot, 'apps', 'web', 'dist');
+const gamesDir = join(projectRoot, 'games');
 
 export interface ServerConfig {
   port: number;
@@ -109,9 +109,7 @@ export async function createServer(config: ServerConfig) {
     logger: log,
     eventBus,
     storage,
-      adapterFactory: (arenaId: string): GameBridge | null => {
-        return createGameBridge(arenaId);
-      },
+    adapterFactory: (gameId?: string) => createGameBridge(gameId),
   });
   container.register('runtime', runtime);
 
@@ -169,11 +167,31 @@ export async function createServer(config: ServerConfig) {
     log.warn('No plugins found or failed to load', { component: 'server' }, error as Error);
   }
 
-  // Static file serving for web UI
+  // Static file serving for web UI and converted games
   if (existsSync(webDistPath)) {
     app.use('*', async (c, next) => {
       const url = new URL(c.req.url);
       const pathname = url.pathname;
+
+      // Serve game files from games/ directory
+      if (pathname.startsWith('/games/')) {
+        const gamePath = pathname.replace(/^\/games\//, '');
+        const filePath = join(gamesDir, gamePath);
+        if (existsSync(filePath) && !statSync(filePath).isDirectory()) {
+          const ext = gamePath.split('.').pop()?.toLowerCase();
+          const contentType =
+            ext === 'html' || ext === 'htm' ? 'text/html' :
+            ext === 'js' ? 'application/javascript' :
+            ext === 'css' ? 'text/css' :
+            ext === 'json' ? 'application/json' :
+            ext === 'svg' ? 'image/svg+xml' :
+            'application/octet-stream';
+          return new Response(readFileSync(filePath), {
+            headers: { 'Content-Type': contentType },
+          });
+        }
+        return c.notFound();
+      }
 
       if (pathname === '/' || pathname === '') {
         const htmlPath = join(webDistPath, 'index.html');
@@ -234,6 +252,7 @@ export async function createServer(config: ServerConfig) {
   app.route('/api/packages', createPackagesRoutes(packagesManager));
   app.route('/api/artifacts', createArtifactRoutes(container, projectRoot));
   app.route('/api/scoreboard', createScoreboardRoutes(container));
+
 
   // C.2: Deep health check (server uptime, db, plugin system)
   app.get('/health', async (c) => {

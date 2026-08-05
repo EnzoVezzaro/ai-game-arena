@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { Container } from '@ai-game-arena/core';
-import { Runtime } from '@ai-game-arena/runtime';
+import { Container } from '@ai-game-arena/kernel';
+import { Runtime } from '@ai-game-arena/battle-runtime';
 import { SqliteStorage } from '@ai-game-arena/storage';
 import type { AgentConfig, BattleConfig } from '@ai-game-arena/sdk';
 import { createGameBridge } from '../lib/game-bridge-factory';
@@ -137,7 +137,7 @@ export function createBattleRoutes(container: Container) {
     // render state after the first i events; index 0 is the initial board.
     // This makes replay show the game actually being played, not the final
     // snapshot.
-    const bridge = createGameBridge(battle.arenaId);
+    const bridge = createGameBridge(battle.gameId);
     let renderStates: Array<Record<string, unknown> | null> | null = null;
     if (bridge) {
       try {

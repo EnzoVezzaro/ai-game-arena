@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test Game</title></head>
+<body>
+<canvas id="c" width="400" height="300"></canvas>
+<script>
+const ctx = document.getElementById('c').getContext('2d');
+function loop() {
+  ctx.fillStyle = '#123';
+  ctx.fillRect(0, 0, 400, 300);
+  ctx.fillStyle = '#f80';
+  ctx.fillRect(50 + Math.random()*300, 50 + Math.random()*200, 20, 20);
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

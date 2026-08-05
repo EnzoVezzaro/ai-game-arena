@@ -1,18 +1,19 @@
-// Core Runtime Kernel
-// Provides: DI, Event Bus, Lifecycle, Config, Logging
+// BACKWARD COMPAT ALIAS
+// This package is deprecated. Use @ai-game-arena/kernel instead.
+// All exports are re-exported from the kernel package.
 
-export { Container } from './di/container';
-export type { ServiceIdentifier } from './di/container';
+export { Container } from '@ai-game-arena/kernel';
+export type { ServiceIdentifier } from '@ai-game-arena/kernel';
 
-export { InProcessEventBus } from './event-bus/event-bus';
+export { InProcessEventBus } from '@ai-game-arena/kernel';
 
-export { ConsoleLogger } from './logging/logger';
+export { ConsoleLogger } from '@ai-game-arena/kernel';
 
-export { Config } from './config/config';
+export { Config } from '@ai-game-arena/kernel';
 
-export { LifecycleManager } from './lifecycle/lifecycle';
-export type { LifecycleHook, LifecyclePhase, HealthStatus } from './lifecycle/lifecycle';
+export { LifecycleManager } from '@ai-game-arena/kernel';
+export type { LifecycleHook, LifecyclePhase, HealthStatus } from '@ai-game-arena/kernel';
 
-export { Tokens } from './tokens';
-export { createContainer } from './composition';
-export type { CompositionConfig } from './composition';
+export { Tokens } from '@ai-game-arena/kernel';
+export { createContainer } from '@ai-game-arena/kernel';
+export type { CompositionConfig } from '@ai-game-arena/kernel';

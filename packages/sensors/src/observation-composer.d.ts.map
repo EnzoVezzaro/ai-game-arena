@@ -1,0 +1,1 @@
+{"version":3,"file":"observation-composer.d.ts","sourceRoot":"","sources":["observation-composer.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,mBAAmB,EAAE,MAAM,wBAAwB,CAAC;AAElE,qBAAa,mBAAmB;IAC9B,OAAO,CAAC,SAAS,CAA6B;IAE9C,WAAW,CAAC,QAAQ,EAAE,mBAAmB,GAAG,IAAI;IAIhD,OAAO,IAAI,MAAM,CAAC,MAAM,EAAE,OAAO,CAAC;IAQlC,KAAK,IAAI,IAAI;CAGd"}

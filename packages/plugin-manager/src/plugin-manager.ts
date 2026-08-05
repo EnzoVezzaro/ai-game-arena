@@ -62,6 +62,7 @@ export class PluginManager {
   private cliCommands: RegisteredCliCommand[] = [];
   private serverMiddlewares: RegisteredServerMiddleware[] = [];
 
+
   constructor(options: PluginManagerOptions) {
     this.logger = options.logger;
     this.eventBus = options.eventBus;
@@ -396,6 +397,7 @@ export class PluginManager {
           handle: middleware.handle,
         });
       },
+
       getAvailableTools() {
         return registeredTools;
       },

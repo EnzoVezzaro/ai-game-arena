@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { Container } from '@ai-game-arena/core';
+import { Container } from '@ai-game-arena/kernel';
 import { PluginManager } from '@ai-game-arena/plugin-manager';
 
 export function createPluginRoutes(container: Container) {

@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { Container } from '@ai-game-arena/core';
+import { Container } from '@ai-game-arena/kernel';
 import { SqliteStorage } from '@ai-game-arena/storage';
 import { existsSync, mkdirSync } from 'fs';
-import { rm, writeFile, readFile } from 'fs/promises';
+import { rm, readdir, writeFile, readFile, cp } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { $ } from 'bun';
@@ -273,6 +273,99 @@ export function createArtifactRoutes(container: Container, projectRoot: string) 
       updated_at: r.updated_at,
     };
   }
+  // ---- Convert a game artifact ----
+  app.post('/convert', async (c) => {
+    const body = await c.req.parseBody();
+    const file = body['file'];
+    const targetFormat = (body['format'] ?? 'html') as string;
+
+    if (!(file instanceof File)) {
+      return c.json({ error: 'No `file` field in form upload' }, 400);
+    }
+
+    const buf = Buffer.from(await file.arrayBuffer());
+    const idempotencyKey = randomUUID();
+    const stageDir = join(stagingRoot, `convert-${idempotencyKey}`);
+    mkdirSync(stageDir, { recursive: true });
+    const zipPath = join(stageDir, 'upload.zip');
+    await writeFile(zipPath, buf);
+
+    const extractDir = join(stageDir, 'extracted');
+    mkdirSync(extractDir, { recursive: true });
+    try {
+      await $`unzip -o -q ${zipPath} -d ${extractDir}`.quiet();
+      // Strip macOS resource-fork junk so it never leaks into games/
+      const macJunk = join(extractDir, '__MACOSX');
+      if (existsSync(macJunk)) await rm(macJunk, { recursive: true, force: true });
+    } catch (err) {
+      await rm(stageDir, { recursive: true, force: true });
+      return c.json({ error: `Failed to unzip: ${(err as Error).message}` }, 400);
+    }
+
+    // Find the HTML entry point; prefer an index.html at the shallowest depth.
+    const htmlFiles = await findHtmlFiles(extractDir);
+    if (htmlFiles.length === 0) {
+      await rm(stageDir, { recursive: true, force: true });
+      return c.json({ error: 'No HTML file found in zip' }, 400);
+    }
+    const htmlEntry = htmlFiles
+      .slice()
+      .sort((a, b) => a.split('/').length - b.split('/').length)
+      .find((f) => /(^|\/)index\.html?$/.test(f)) ?? htmlFiles[0]!;
+
+    // Create game.json manifest for the converted game
+    const gameId = `converted-${idempotencyKey.slice(0, 8)}`;
+    const gameName = `Converted Game (${targetFormat})`;
+    const adapterType =
+      targetFormat === 'canvas' ? 'canvas' :
+      targetFormat === 'dom' ? 'dom' :
+      'web';
+    const gameManifest = {
+      id: gameId,
+      name: gameName,
+      description: `Converted from ${targetFormat} format`,
+      version: '1.0.0',
+      category: 'game',
+      format: targetFormat,
+      adapterType,
+      min_players: 1,
+      max_players: 4,
+      entry: htmlEntry.replace(extractDir + '/', ''),
+    };
+
+    // Write game.json
+    await writeFile(join(extractDir, 'game.json'), JSON.stringify(gameManifest, null, 2));
+
+    // Copy to the games directory
+    const persistDir = join(targetDir('game', projectRoot), gameId);
+    if (existsSync(persistDir)) await rm(persistDir, { recursive: true, force: true });
+    mkdirSync(targetDir('game', projectRoot), { recursive: true });
+    await copyTree(extractDir, persistDir);
+    await rm(stageDir, { recursive: true, force: true });
+
+    // Store artifact record
+    const now = Date.now();
+    await storage.run(
+      `INSERT INTO artifacts (id, type, slug, name, version, manifest, status, path, description, published_at, published_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
+      [
+        idempotencyKey,
+        'game',
+        gameId,
+        gameName,
+        '1.0.0',
+        JSON.stringify(gameManifest),
+        'uploaded',
+        persistDir,
+        `Converted from ${targetFormat} format`,
+        now,
+        now,
+      ],
+    );
+
+    const row = await storage.getOne<ArtifactRow>('SELECT * FROM artifacts WHERE id = ?', [idempotencyKey]);
+    return c.json(rowToArtifact(row!), 201);
+  });
 
   return app;
 }
@@ -300,7 +393,6 @@ async function findManifest(
     }
   }
   // 2. Single subdirectory
-  const { readdir } = await import('fs/promises');
   try {
     const entries = await readdir(root, { withFileTypes: true });
     const dirs = entries.filter((e) => e.isDirectory());
@@ -326,6 +418,20 @@ async function findManifest(
 
 async function copyTree(src: string, dest: string): Promise<void> {
   mkdirSync(dest, { recursive: true });
-  const { cp } = await import('fs/promises');
   await cp(src, dest, { recursive: true });
+}
+async function findHtmlFiles(dir: string): Promise<string[]> {
+  const results: string[] = [];
+  const entries = await readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name.startsWith('.') || entry.name === '__MACOSX' || entry.name === 'node_modules') continue;
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      const subResults = await findHtmlFiles(fullPath);
+      results.push(...subResults);
+    } else if (entry.name.endsWith('.html') || entry.name.endsWith('.htm')) {
+      results.push(fullPath);
+    }
+  }
+  return results;
 }

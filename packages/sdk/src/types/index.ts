@@ -140,3 +140,13 @@ export type {
 export type { StorageAdapter, QueryFilter, QueryOperator } from './storage';
 export type { Logger, LogLevel, LogContext } from './logging';
 export type { ConfigReader } from './config';
+
+// Architecture types
+export type { Mind, CognitiveModule, CognitiveState, Intent } from './mind';
+export type { Identity, IdentityState, MemoryProvider } from './identity';
+export type { Sensor, SensorCapability, ObservationFragment } from './sensor';
+export type { Driver, InputTransport } from './driver';
+export type { Platform, PlatformCapabilities } from './platform';
+export type { Session, SessionConfig, SessionState } from './session';
+export type { Recording, ReplayEntry, Replayer } from './replay';
+export type { Player } from './player';

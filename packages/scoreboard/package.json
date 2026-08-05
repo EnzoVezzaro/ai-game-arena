@@ -19,7 +19,7 @@
     "@ai-game-arena/sdk": "workspace:*"
   },
   "devDependencies": {
-    "@ai-game-arena/core": "workspace:*",
+    "@ai-game-arena/kernel": "workspace:*",
     "@ai-game-arena/storage": "workspace:*",
     "typescript": "^5.7.0"
   }

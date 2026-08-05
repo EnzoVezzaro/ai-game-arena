@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import { Container } from '@ai-game-arena/core';
+import { Container } from '@ai-game-arena/kernel';
 import { PluginManager } from '@ai-game-arena/plugin-manager';
-import { Runtime } from '@ai-game-arena/runtime';
+import { Runtime } from '@ai-game-arena/battle-runtime';
 
 export function createApiRoutes(container: Container) {
   const app = new Hono();

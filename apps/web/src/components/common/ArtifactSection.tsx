@@ -3,6 +3,7 @@ import { Icon } from '../../lib/Icon';
 import { useArtifacts, useArtifactActions, type ArtifactType } from '../../lib/artifacts';
 import { ArtifactCard } from './ArtifactCard';
 import { UploadZipModal } from './UploadZipModal';
+import { ConvertGameModal } from './ConvertGameModal';
 
 interface ArtifactSectionProps {
   type: ArtifactType;
@@ -14,6 +15,9 @@ export function ArtifactSection({ type, title, description }: ArtifactSectionPro
   const { items, loading, refetch } = useArtifacts(type);
   const actions = useArtifactActions(refetch);
   const [showUpload, setShowUpload] = useState(false);
+  const [showConvert, setShowConvert] = useState(false);
+
+
 
   return (
     <section className="mt-10">
@@ -29,6 +33,14 @@ export function ArtifactSection({ type, title, description }: ArtifactSectionPro
         >
           <Icon name="Upload" size={12} /> Upload zip
         </button>
+        {type === 'game' && (
+          <button
+            onClick={() => setShowConvert(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary/15 text-primary px-3 py-1.5 text-[11px] font-semibold hover:bg-primary/25"
+          >
+            <Icon name="RefreshCw" size={12} /> Convert game
+          </button>
+        )}
       </div>
 
       <p className="text-xs text-muted-foreground mb-3">{description}</p>
@@ -52,6 +64,22 @@ export function ArtifactSection({ type, title, description }: ArtifactSectionPro
         onClose={() => setShowUpload(false)}
         target={type}
         onUpload={(file) => actions.uploadZip(type, file)}
+      />
+
+      <ConvertGameModal
+        open={showConvert}
+        onClose={() => setShowConvert(false)}
+        onConvert={async (file, fmt) => {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('format', fmt);
+          const res = await fetch('/api/artifacts/convert', {
+            method: 'POST',
+            body: formData,
+          });
+          if (!res.ok) throw new Error(`Conversion failed: ${res.statusText}`);
+          return res.json();
+        }}
       />
     </section>
   );

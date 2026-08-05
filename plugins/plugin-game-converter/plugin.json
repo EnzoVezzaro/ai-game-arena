@@ -1,0 +1,25 @@
+{
+  "id": "plugin-game-converter",
+  "name": "Game Converter",
+  "description": "Converts games from various formats (HTML, Canvas, Unity) into the arena system",
+  "version": "1.0.0",
+  "category": "converter",
+  "author": "AI Game Arena",
+  "license": "MIT",
+  "engines": { "aga": "^0.1.0" },
+  "entry": "./dist/index.js",
+  "activation": { "startup": false },
+  "contributions": {
+    "uiPanels": [
+      {
+        "id": "convert-game",
+        "component": "/api/plugins/plugin-game-converter/convert-panel",
+        "label": "Convert Game",
+        "position": "overlay",
+        "type": "custom"
+      }
+    ]
+  },
+  "dependencies": {},
+  "permissions": ["storage", "serverRoutes"]
+}

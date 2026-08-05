@@ -13,6 +13,7 @@ export type PluginCategory =
   | 'storage'
   | 'controller';
 
+
 export interface PluginManifest {
   readonly id: string;
   readonly name: string;

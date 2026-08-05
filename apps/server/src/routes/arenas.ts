@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { Container } from '@ai-game-arena/core';
-import { Runtime } from '@ai-game-arena/runtime';
+import { Container } from '@ai-game-arena/kernel';
+import { Runtime } from '@ai-game-arena/battle-runtime';
 import { readdir, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';

@@ -1,4 +1,4 @@
-import { ConsoleLogger, InProcessEventBus } from '@ai-game-arena/core';
+import { ConsoleLogger, InProcessEventBus } from '@ai-game-arena/kernel';
 import { PluginManager } from '@ai-game-arena/plugin-manager';
 import { SqliteStorage } from '@ai-game-arena/storage';
 import { parseArgs } from '../utils/args';

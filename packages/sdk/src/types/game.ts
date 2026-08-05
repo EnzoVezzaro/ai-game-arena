@@ -124,3 +124,4 @@ export interface NativeInput {
   readonly action: string;
   readonly parameters: Record<string, unknown>;
 }
+

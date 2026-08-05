@@ -1,6 +1,6 @@
-import { ConsoleLogger, InProcessEventBus } from '@ai-game-arena/core';
+import { ConsoleLogger, InProcessEventBus } from '@ai-game-arena/kernel';
 import { PluginManager } from '@ai-game-arena/plugin-manager';
-import { Runtime } from '@ai-game-arena/runtime';
+import { Runtime } from '@ai-game-arena/battle-runtime';
 import { SqliteStorage } from '@ai-game-arena/storage';
 import { parseArgs } from '../utils/args';
 import type { AgentConfig } from '@ai-game-arena/sdk';
