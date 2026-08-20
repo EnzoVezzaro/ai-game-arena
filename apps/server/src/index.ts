@@ -23,6 +23,7 @@ import { createProfilesRoutes } from './routes/profiles';
 import { createModelsRoutes } from './routes/models';
 import { createPackagesRoutes } from './routes/packages';
 import { createArtifactRoutes } from './routes/artifacts';
+import { createGameGeneratorRoutes } from './routes/game-generator';
 import { createScoreboardRoutes } from './routes/scoreboard';
 import { BattleWebSocketServer } from './ws/battle-ws';
 import { GamesManager } from '@ai-game-arena/games-manager';
@@ -109,7 +110,7 @@ export async function createServer(config: ServerConfig) {
     logger: log,
     eventBus,
     storage,
-    adapterFactory: (gameId?: string) => createGameBridge(gameId),
+    adapterFactory: async (gameId?: string) => createGameBridge(gameId),
   });
   container.register('runtime', runtime);
 
@@ -167,31 +168,44 @@ export async function createServer(config: ServerConfig) {
     log.warn('No plugins found or failed to load', { component: 'server' }, error as Error);
   }
 
-  // Static file serving for web UI and converted games
+  // Serve game files from games/ directory (always available, even in dev mode)
+  app.use('/games/*', async (c, next) => {
+    const url = new URL(c.req.url);
+    const pathname = url.pathname;
+
+    if (pathname.startsWith('/games/')) {
+      const gamePath = pathname.replace(/^\/games\//, '');
+      const filePath = join(gamesDir, gamePath);
+      if (existsSync(filePath) && !statSync(filePath).isDirectory()) {
+        const ext = gamePath.split('.').pop()?.toLowerCase();
+        const contentType =
+          ext === 'html' || ext === 'htm'
+            ? 'text/html'
+            : ext === 'js'
+              ? 'application/javascript'
+              : ext === 'css'
+                ? 'text/css'
+                : ext === 'json'
+                  ? 'application/json'
+                  : ext === 'svg'
+                    ? 'image/svg+xml'
+                    : 'application/octet-stream';
+        return new Response(readFileSync(filePath), {
+          headers: { 'Content-Type': contentType },
+        });
+      }
+      return c.notFound();
+    }
+
+    await next();
+    return c.res;
+  });
+
+  // Static file serving for web UI (only when built)
   if (existsSync(webDistPath)) {
     app.use('*', async (c, next) => {
       const url = new URL(c.req.url);
       const pathname = url.pathname;
-
-      // Serve game files from games/ directory
-      if (pathname.startsWith('/games/')) {
-        const gamePath = pathname.replace(/^\/games\//, '');
-        const filePath = join(gamesDir, gamePath);
-        if (existsSync(filePath) && !statSync(filePath).isDirectory()) {
-          const ext = gamePath.split('.').pop()?.toLowerCase();
-          const contentType =
-            ext === 'html' || ext === 'htm' ? 'text/html' :
-            ext === 'js' ? 'application/javascript' :
-            ext === 'css' ? 'text/css' :
-            ext === 'json' ? 'application/json' :
-            ext === 'svg' ? 'image/svg+xml' :
-            'application/octet-stream';
-          return new Response(readFileSync(filePath), {
-            headers: { 'Content-Type': contentType },
-          });
-        }
-        return c.notFound();
-      }
 
       if (pathname === '/' || pathname === '') {
         const htmlPath = join(webDistPath, 'index.html');
@@ -237,6 +251,7 @@ export async function createServer(config: ServerConfig) {
   app.route('/api/v1/models', createModelsRoutes());
   app.route('/api/v1/packages', createPackagesRoutes(packagesManager));
   app.route('/api/v1/artifacts', createArtifactRoutes(container, projectRoot));
+  app.route('/api/v1/game-generator', createGameGeneratorRoutes(container, projectRoot));
   app.route('/api/v1/scoreboard', createScoreboardRoutes(container));
 
   // Unversioned aliases for frontend compatibility
@@ -251,8 +266,8 @@ export async function createServer(config: ServerConfig) {
   app.route('/api/models', createModelsRoutes());
   app.route('/api/packages', createPackagesRoutes(packagesManager));
   app.route('/api/artifacts', createArtifactRoutes(container, projectRoot));
+  app.route('/api/game-generator', createGameGeneratorRoutes(container, projectRoot));
   app.route('/api/scoreboard', createScoreboardRoutes(container));
-
 
   // C.2: Deep health check (server uptime, db, plugin system)
   app.get('/health', async (c) => {

@@ -3,6 +3,64 @@ import type { ConfigReader } from './config';
 import type { EventBus } from './events';
 import type { ArenaPlugin } from './arena';
 
+/** Supported source formats for game conversion. */
+export type GameFormat =
+  | 'html'
+  | 'canvas'
+  | 'unity_webgl'
+  | 'dom'
+  | 'embed_url'
+  | 'native';
+
+/** Manifest describing a game produced by a converter. */
+export interface ConvertedGameManifest {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly version: string;
+  readonly category: 'game';
+  readonly format: GameFormat;
+  readonly adapterType: string;
+  readonly min_players: number;
+  readonly max_players: number;
+  readonly entry: string;
+}
+
+/** Result of converting a packaged game into the arena system. */
+export interface ConversionResult {
+  readonly gameId: string;
+  readonly name: string;
+  readonly format: GameFormat;
+  readonly adapterType: string;
+  readonly path: string;
+  readonly manifest: ConvertedGameManifest;
+}
+
+/** Options passed to a converter's `convert` call. */
+export interface ConverterOptions {
+  readonly gameId?: string;
+  readonly gameName?: string;
+}
+
+/** A single adapter that knows how to convert one source format. */
+export interface ConverterAdapter {
+  readonly format: GameFormat;
+  readonly label: string;
+  readonly description: string;
+  convert(zipPath: string, options: ConverterOptions): Promise<ConversionResult>;
+}
+
+/** A plugin-provided game converter (registers one or more adapters). */
+export interface GameConverter {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly version: string;
+  readonly formats: GameFormat[];
+  readonly adapters: ConverterAdapter[];
+  convert(zipPath: string, format: GameFormat, options?: ConverterOptions): Promise<ConversionResult>;
+}
+
 export type PluginCategory =
   | 'arena'
   | 'interaction'
@@ -63,7 +121,7 @@ export interface PluginContext {
   registerCliCommand(command: CliCommand): void;
   registerDashboardWidget(widget: DashboardWidget): void;
   registerNavigationItem(item: NavigationItem): void;
-  registerServerMiddleware(middleware: ServerMiddleware): void;
+  registerGameConverter(converter: GameConverter): void;
 
   getAvailableTools(): McpTool[];
   getAvailableArenas(): ArenaPlugin[];

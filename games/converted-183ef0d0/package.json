@@ -1,0 +1,11 @@
+{
+  "name": "converted-183ef0d0",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./drawclimber/index.html",
+  "scripts": {
+    "build": "echo 'No build needed for HTML game'",
+    "typecheck": "echo 'No TypeScript to check'"
+  }
+}

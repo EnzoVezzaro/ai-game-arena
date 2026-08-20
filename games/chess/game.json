@@ -4,11 +4,13 @@
   "description": "Classic chess game rules",
   "version": "1.0.0",
   "category": "game",
+  "format": "rules",
+  "adapterType": "internal",
   "min_players": 2,
   "max_players": 2,
   "engines": { "aga": "^0.1.0" },
   "entry": "./dist/index.js",
   "activation": { "startup": false },
-  "dependencies": {},
+  "adapter": "./src/adapters/chess-bridge",
   "permissions": []
 }

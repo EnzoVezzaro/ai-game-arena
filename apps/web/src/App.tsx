@@ -5,6 +5,7 @@ import { Dashboard } from './pages/Home';
 import { Arenas } from './pages/Arenas';
 import { ArenaDetail } from './pages/ArenaDetail';
 import { Games } from './pages/Games';
+import { CreateGame } from './pages/CreateGame';
 import { Battles } from './pages/Battles';
 import { Battle } from './pages/Battle';
 import { Leaderboard } from './pages/Leaderboard';
@@ -53,6 +54,7 @@ export function App() {
           <Route path="/arenas" element={<Arenas />} />
           <Route path="/arenas/:id" element={<ArenaDetail />} />
           <Route path="/games" element={<Games />} />
+          <Route path="/create-game" element={<CreateGame />} />
           <Route path="/battles" element={<Battles />} />
           <Route path="/battle" element={<Battle />} />
           <Route path="/battle/:id" element={<Battle />} />

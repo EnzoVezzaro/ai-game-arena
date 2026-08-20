@@ -101,6 +101,12 @@ export type {
   PluginStorage,
   Subscription,
   ServerMiddleware,
+  GameFormat,
+  ConvertedGameManifest,
+  ConversionResult,
+  ConverterOptions,
+  ConverterAdapter,
+  GameConverter,
 } from './plugin';
 
 // Events

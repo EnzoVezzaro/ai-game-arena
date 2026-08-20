@@ -5,3 +5,4 @@ export { CanvasBridge } from './canvas-platform';
 export type { CanvasGameHost } from './canvas-platform';
 export { UnityBridge } from './unity-platform';
 export type { UnityBridgeOptions, BridgeTransport, BridgeTransportMessage } from './unity-platform';
+export type { GameBridge } from './platform';

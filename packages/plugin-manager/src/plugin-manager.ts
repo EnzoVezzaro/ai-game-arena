@@ -61,6 +61,7 @@ export class PluginManager {
   private serverRoutes: RegisteredServerRoute[] = [];
   private cliCommands: RegisteredCliCommand[] = [];
   private serverMiddlewares: RegisteredServerMiddleware[] = [];
+  private gameConverters: Array<{ pluginId: string; converter: unknown }> = [];
 
 
   constructor(options: PluginManagerOptions) {
@@ -396,6 +397,9 @@ export class PluginManager {
           priority: middleware.priority ?? 100,
           handle: middleware.handle,
         });
+      },
+      registerGameConverter(converter) {
+        self.gameConverters.push({ pluginId: manifest.id, converter });
       },
 
       getAvailableTools() {

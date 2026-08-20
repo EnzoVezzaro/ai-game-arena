@@ -16,6 +16,7 @@
     "typecheck": "bun x tsc --noEmit"
   },
   "dependencies": {
+    "@ai-game-arena/platforms": "workspace:*",
     "@ai-game-arena/sdk": "workspace:*"
   },
   "devDependencies": {

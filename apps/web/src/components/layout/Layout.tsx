@@ -10,6 +10,7 @@ const NAV = [
   { to: '/', label: 'Overview', icon: 'LayoutGrid' },
   { to: '/arenas', label: 'Arenas', icon: 'Swords' },
   { to: '/games', label: 'Games', icon: 'Gamepad2' },
+  { to: '/create-game', label: 'Create Game', icon: 'Sparkles' },
   { to: '/battles', label: 'Battles', icon: 'Radio' },
   { to: '/leaderboard', label: 'Leaderboard', icon: 'Trophy' },
   { to: '/agents', label: 'Agents', icon: 'Bot' },

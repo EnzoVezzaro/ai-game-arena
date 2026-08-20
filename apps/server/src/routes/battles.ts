@@ -27,7 +27,11 @@ export function createBattleRoutes(container: Container) {
           [a.id],
         );
         if (!stored) return a;
-        const full: AgentConfig = { ...JSON.parse(stored.config) as AgentConfig, id: a.id, name: stored.name };
+        const full: AgentConfig = {
+          ...(JSON.parse(stored.config) as AgentConfig),
+          id: a.id,
+          name: stored.name,
+        };
         return { ...full, strategy: a.strategy ?? full.strategy };
       }),
     );
@@ -82,9 +86,9 @@ export function createBattleRoutes(container: Container) {
   app.post('/:id/start', async (c) => {
     const id = c.req.param('id');
     setTimeout(() => {
-      runtime.startBattle(id).catch((err) =>
-        console.error(`[battle] start failed for ${id}:`, err),
-      );
+      runtime
+        .startBattle(id)
+        .catch((err) => console.error(`[battle] start failed for ${id}:`, err));
     }, 0);
     return c.json({ status: 'started' });
   });
@@ -137,7 +141,7 @@ export function createBattleRoutes(container: Container) {
     // render state after the first i events; index 0 is the initial board.
     // This makes replay show the game actually being played, not the final
     // snapshot.
-    const bridge = createGameBridge(battle.gameId);
+    const bridge = await createGameBridge(battle.gameId);
     let renderStates: Array<Record<string, unknown> | null> | null = null;
     if (bridge) {
       try {

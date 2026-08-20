@@ -22,4 +22,4 @@ export { Capability } from './capabilities/capability';
 
 // Plugin Contracts
 export { PluginManifestSchema } from './plugin-contracts/plugin-contract';
-export type { PluginManifest, PluginCategory, PluginContext } from './plugin-contracts/plugin-contract';
+export type { PluginManifest, PluginCategory } from './plugin-contracts/plugin-contract';
